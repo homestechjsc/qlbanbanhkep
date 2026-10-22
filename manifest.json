@@ -2,7 +2,7 @@
   "name": "Bánh Kẹp Takeaway POS",
   "short_name": "Bánh Kẹp POS",
   "description": "Hệ thống quản lý bán bánh kẹp và doanh thu trên di động",
-  "start_url": "adquanly.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#0072bc",
   "theme_color": "#0072bc",
