@@ -91,8 +91,9 @@
         </div>
     </div>
 
-    <!-- 1. HEADER DI ĐỘNG -->
-    <header class="bg-[#0072bc] text-white h-12 px-3 flex items-center justify-between shadow flex-shrink-0 z-20 select-none">
+    <!-- 1. HEADER DI ĐỘNG (Đã đệm Safe Area tránh tai thỏ / Dynamic Island) -->
+    <header style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(48px + env(safe-area-inset-top, 0px));" 
+            class="bg-[#0072bc] text-white px-3 py-1 flex items-center justify-between shadow flex-shrink-0 z-20 select-none">
         <div class="flex items-center gap-2">
             <i class="fa-solid fa-cookie-bite text-amber-300 text-lg"></i>
             <div>
@@ -142,7 +143,6 @@
                 </div>
                 
                 <div class="flex items-center gap-1.5">
-                    <!-- Nút bật/tắt chế độ gộp đơn -->
                     <button @click="toggleMultiCheckoutMode()" 
                             :class="isMultiCheckoutMode ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 border border-slate-300'"
                             class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
@@ -150,7 +150,7 @@
                         <span x-text="isMultiCheckoutMode ? 'Hủy gộp' : 'Thu gộp'"></span>
                     </button>
 
-                    <select x-model="selectedAreaFilter" class="bg-slate-50 border rounded-lg px-2 py-1.5 text-xs font-bold text-[#0072bc]">
+                    <select x-model="selectedAreaFilter" class="bg-slate-50 border rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#0072bc]">
                         <template x-for="area in areas" :key="area">
                             <option :value="area" x-text="area"></option>
                         </template>
@@ -311,7 +311,7 @@
                 </div>
             </div>
 
-            <!-- THANH THAO TÁC NỔI (Đã chỉnh Safe Area và nút Tăng/Giảm/Xóa đổi bánh) -->
+            <!-- THANH THAO TÁC NỔI (Đã đệm Safe Area tránh menu đáy iPhone) -->
             <div x-show="currentOrder.items.length > 0" 
                  style="bottom: calc(env(safe-area-inset-bottom, 0px) + 68px);"
                  class="fixed left-2 right-2 bg-slate-900 text-white rounded-2xl p-2.5 shadow-2xl flex flex-col gap-2 z-40 border border-slate-700">
@@ -430,7 +430,7 @@
 
     </main>
 
-    <!-- 3. BOTTOM NAVIGATION BAR (Đã xử lý Safe Area cho iPhone) -->
+    <!-- 3. BOTTOM NAVIGATION BAR (Đã đệm Safe Area đáy cho iPhone) -->
     <nav style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);" 
          class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around z-30 select-none shadow-lg pt-1.5">
         <button @click="switchTab('tables')" :class="currentTab === 'tables' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
