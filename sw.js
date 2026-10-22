@@ -1,6 +1,6 @@
 const CACHE_NAME = 'banhkep-pos-v1';
 const ASSETS_TO_CACHE = [
-  './adquanly.html',
+  './index.html',
   './admin.html',
   './adquanly.js',
   './manifest.json',
