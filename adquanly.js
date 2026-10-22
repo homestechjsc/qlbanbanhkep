@@ -59,9 +59,14 @@ function cafeApp() {
         menuForm: { id: null, name: '', price: 20000, category: 'Bánh kẹp mặn', image: '' },
         openShiftForm: { initialCash: 200000, shiftName: 'Ca Bán Mang Về', note: '' },
 
+        // ================= CHẾ ĐỘ THANH TOÁN GỘP =================
+        isMultiCheckoutMode: false,
+        selectedSlotsForCheckout: [],
+        showMultiPaymentModal: false,
+
         // ================= KHỞI TẠO DỮ LIỆU REALTIME =================
         init() {
-            // 1. Tải danh sách nhân viên từ Firebase để sẵn sàng xác thực
+            // 1. Tải danh sách nhân viên từ Firebase
             db.ref('staff').on('value', snap => {
                 const d = snap.val();
                 this.staffList = d ? Object.keys(d).map(k => ({ id: k, ...d[k] })) : [];
@@ -141,7 +146,6 @@ function cafeApp() {
                 return;
             }
 
-            // Tài khoản Admin dự phòng khẩn cấp
             if (u === 'admin' && p === '1234') {
                 this.currentUser = { id: 'admin', name: 'Quản Trị Viên', role: 'Quản lý', username: 'admin' };
                 localStorage.setItem('pos_mobile_user', JSON.stringify(this.currentUser));
@@ -149,7 +153,6 @@ function cafeApp() {
                 return;
             }
 
-            // Kiểm tra danh sách nhân viên do admin.html tạo trên Firebase
             db.ref('staff').once('value', snap => {
                 const list = snap.val() ? Object.keys(snap.val()).map(k => ({ id: k, ...snap.val()[k] })) : [];
                 const staff = list.find(s => String(s.username).trim().toLowerCase() === u && String(s.pin).trim() === p);
@@ -165,7 +168,7 @@ function cafeApp() {
                     this.loginForm = { username: '', pin: '' };
                     alert(`Đăng nhập thành công! Chào ${staff.name} (${staff.role})`);
                 } else {
-                    alert('Tên đăng nhập hoặc mã PIN không chính xác! Hãy liên hệ Quản lý kiểm tra.');
+                    alert('Tên đăng nhập hoặc mã PIN không chính xác! Hãy liên hệ Quản lý.');
                 }
             });
         },
@@ -228,7 +231,7 @@ function cafeApp() {
             return items;
         },
 
-        // ================= XỬ LÝ CHỌN VỊ TRÍ & XONG / GIAO KHÁCH =================
+        // ================= THAO TÁC KẸP BÁNH LẺ & GỘP =================
         handleSlotClick(slot) {
             this.selectTable(slot);
             if (slot.status !== 'serving') {
@@ -260,7 +263,7 @@ function cafeApp() {
             db.ref('tableOrders/' + this.selectedTable.id).set(this.currentOrder.items);
         },
 
-        // ================= TĂNG / GIẢM / XÓA BÁNH KHI CHỌN NHẦM =================
+        // Tăng / Giảm / Xóa bánh khi bấm nhầm
         updateCurrentQty(change) {
             if (this.currentOrder.items.length === 0) return;
             this.currentOrder.items[0].qty += change;
@@ -296,7 +299,7 @@ function cafeApp() {
             this.currentTab = 'tables';
         },
 
-        // ================= THANH TOÁN =================
+        // ================= THANH TOÁN LẺ 1 BÁNH =================
         openPaymentModal() {
             if (!this.selectedTable || this.currentOrder.items.length === 0) {
                 alert('Vị trí kẹp này hiện chưa có bánh!');
@@ -336,71 +339,71 @@ function cafeApp() {
             this.currentTab = 'tables';
         },
 
-        // ================= QUẢN LÝ KHUÔN =================
-        openAreaManageModal() {
-            this.showAreaModal = true;
+        // ================= LOGIC THANH TOÁN GỘP =================
+        toggleMultiCheckoutMode() {
+            this.isMultiCheckoutMode = !this.isMultiCheckoutMode;
+            this.selectedSlotsForCheckout = [];
         },
 
-        addNewArea() {
-            const moldName = this.newAreaName.trim();
-            if (!moldName) return;
-            if (this.areas.includes(moldName)) {
-                alert('Tên khuôn này đã tồn tại!');
+        toggleSlotSelection(slotId) {
+            const idx = this.selectedSlotsForCheckout.indexOf(slotId);
+            if (idx > -1) {
+                this.selectedSlotsForCheckout.splice(idx, 1);
+            } else {
+                this.selectedSlotsForCheckout.push(slotId);
+            }
+        },
+
+        get multiCheckoutItems() {
+            let allItems = [];
+            this.selectedSlotsForCheckout.forEach(slotId => {
+                const items = this.tableOrders[slotId] || [];
+                items.forEach(it => {
+                    allItems.push({ ...it, fromSlotId: slotId });
+                });
+            });
+            return allItems;
+        },
+
+        get multiCheckoutTotal() {
+            return this.multiCheckoutItems.reduce((sum, i) => sum + (Number(i.price || 0) * Number(i.qty || 1)), 0);
+        },
+
+        openMultiPaymentModal() {
+            if (this.selectedSlotsForCheckout.length === 0) {
+                alert("Vui lòng chọn ít nhất 1 vị trí kẹp đang nướng!");
                 return;
             }
-
-            const updatedAreas = [...this.areas, moldName];
-            db.ref('areas').set(updatedAreas).then(() => {
-                this.areas = updatedAreas;
-                this.newAreaName = '';
-                this.resetMoldSlotsForArea(moldName);
-            });
+            this.paymentMethod = 'Tiền mặt';
+            this.showMultiPaymentModal = true;
         },
 
-        deleteArea(areaName) {
-            if (confirm(`Xóa "${areaName}" và tất cả vị trí kẹp của khuôn này?`)) {
-                const updatedAreas = this.areas.filter(a => a !== areaName);
-                db.ref('areas').set(updatedAreas).then(() => {
-                    this.areas = updatedAreas;
-                    this.tables.filter(t => t.area === areaName).forEach(s => db.ref('tables/' + s.id).remove());
-                });
-            }
-        },
+        confirmMultiCheckout() {
+            if (this.selectedSlotsForCheckout.length === 0) return;
 
-        // ================= QUẢN LÝ THỰC ĐƠN =================
-        openMenuModal() {
-            this.isEditingMenu = false;
-            this.menuForm = { id: null, name: '', price: 20000, category: 'Bánh kẹp mặn', image: '' };
-            this.showMenuModal = true;
-        },
-
-        openEditMenuModal(m) {
-            this.isEditingMenu = true;
-            this.menuForm = { ...m };
-            this.showMenuModal = true;
-        },
-
-        saveMenu() {
-            if (!this.menuForm.name.trim()) return;
-            const payload = {
-                name: this.menuForm.name.trim(),
-                price: Number(this.menuForm.price) || 0,
-                category: this.menuForm.category,
-                image: this.menuForm.image || ''
+            const newOrderRef = db.ref('orders').push();
+            const orderData = {
+                id: newOrderRef.key,
+                table: `Đơn gộp (${this.selectedSlotsForCheckout.length} vị trí)`,
+                items: [...this.multiCheckoutItems],
+                total: this.multiCheckoutTotal,
+                paymentMethod: this.paymentMethod,
+                cashier: this.currentUser ? this.currentUser.name : 'Thu ngân',
+                timestamp: new Date().toISOString()
             };
 
-            if (this.isEditingMenu) {
-                db.ref('menu/' + this.menuForm.id).update(payload);
-            } else {
-                db.ref('menu').push(payload);
-            }
-            this.showMenuModal = false;
-        },
+            newOrderRef.set(orderData);
 
-        deleteMenuItem(id) {
-            if (confirm('Xóa món bánh này khỏi thực đơn?')) {
-                db.ref('menu/' + id).remove();
-            }
+            // Làm trống toàn bộ các kẹp đã chọn
+            this.selectedSlotsForCheckout.forEach(slotId => {
+                db.ref('tables/' + slotId).update({ status: 'empty' });
+                db.ref('tableOrders/' + slotId).remove();
+            });
+
+            this.selectedSlotsForCheckout = [];
+            this.isMultiCheckoutMode = false;
+            this.showMultiPaymentModal = false;
+            alert("Đã thu tiền gộp và làm trống toàn bộ các kẹp thành công!");
         },
 
         // ================= SỔ QUỸ =================
