@@ -24,14 +24,14 @@ function cafeApp() {
         currentShift: JSON.parse(localStorage.getItem('pos_mobile_shift') || 'null'),
         
         storeSettings: {
-            storeName: 'Bánh Kẹp Nóng Giòn',
+            storeName: 'Bánh Cá Nướng Taiyaki',
             address: 'Takeaway Kiot',
-            phone: '0972.023.222',
+            phone: '0906255788',
             paperSize: '80mm',
             showQrPayment: true,
-            bankCode: 'MB',
-            bankAccount: '0972023222',
-            bankAccountName: 'BANH KEP'
+            bankCode: 'VPB',
+            bankAccount: '393931968688',
+            bankAccountName: 'LUONG THI THANH HOAI'
         },
 
         // Dữ liệu Bánh & Khuôn
