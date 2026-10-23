@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Quản Lý Bánh Kẹp Takeaway - HomesTech</title>
+    <!-- Cấu hình PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0072bc">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bánh Kẹp POS">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
+
+    <!-- Đăng ký Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((reg) => console.log('PWA Service Worker đã đăng ký thành công!', reg))
+                    .catch((err) => console.log('Đăng ký Service Worker thất bại:', err));
+            });
+        }
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Nạp JS xử lý logic trước Alpine -->
+    <script src="adquanly.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        :root {
+            --cukcuk-blue: #0072bc;
+            --cukcuk-dark: #005a96;
+            --cukcuk-bg: #f8fafc;
+        }
+        body { 
+            background-color: var(--cukcuk-bg); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .mobile-scroll::-webkit-scrollbar { display: none; }
+        .mobile-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800" x-data="cafeApp()">
+
+    <!-- ================= 0. MÀN HÌNH ĐĂNG NHẬP ================= -->
+    <div x-show="!currentUser" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 select-none">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-fadeIn">
+            <div class="bg-[#0072bc] p-5 text-white text-center">
+                <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-white/20">
+                    <i class="fa-solid fa-cookie-bite text-amber-300 text-2xl"></i>
+                </div>
+                <h2 class="text-base font-black tracking-wide">HomesTech POS</h2>
+                <p class="text-[11px] text-blue-100">Đăng nhập ca làm việc nhân viên</p>
+            </div>
+
+            <form @submit.prevent="login()" class="p-5 space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Tên đăng nhập</label>
+                    <div class="relative">
+                        <input type="text" x-model="loginForm.username" placeholder="Nhập tài khoản (VD: nv1, nv2, admin)..." required class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#0072bc]">
+                        <i class="fa-solid fa-user absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 uppercase mb-1">Mã PIN xác thực</label>
+                    <div class="relative">
+                        <input type="password" maxlength="6" x-model="loginForm.pin" placeholder="Mã PIN 4-6 số..." required class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono tracking-widest focus:outline-none focus:border-[#0072bc]">
+                        <i class="fa-solid fa-key absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 bg-[#0072bc] hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md flex items-center justify-center gap-1.5 mt-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Đăng Nhập Vào Bán Hàng
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 1. HEADER DI ĐỘNG -->
+    <header style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(48px + env(safe-area-inset-top, 0px));" 
+            class="bg-[#0072bc] text-white px-3 py-1 flex items-center justify-between shadow flex-shrink-0 z-20 select-none">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-cookie-bite text-amber-300 text-lg"></i>
+            <div>
+                <span class="font-black text-xs block leading-tight" x-text="storeSettings.storeName || 'Bánh Kẹp Takeaway'"></span>
+                <span class="text-[9px] text-blue-200" x-text="currentUser ? (currentUser.name + ' (' + currentUser.role + ')') : ''"></span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <template x-if="hasPermission(['Quản lý'])">
+                <a href="admin.html" class="bg-blue-900/80 px-2 py-1 rounded-lg text-[10px] font-black border border-blue-400/30 text-amber-300 flex items-center gap-1">
+                    <i class="fa-solid fa-chart-line"></i> Admin
+                </a>
+            </template>
+
+            <template x-if="currentShift">
+                <button @click="openCloseShiftModalFunc()" class="bg-blue-900/90 hover:bg-blue-950 px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-blue-400/40 text-[10px] font-bold text-amber-300 shadow-xs" title="Bấm để kết ca">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="max-w-[85px] truncate" x-text="currentShift.shiftName"></span>
+                    <i class="fa-solid fa-arrow-right-from-bracket text-white text-[9px] ml-0.5"></i>
+                </button>
+            </template>
+            <template x-if="!currentShift">
+                <button @click="openOpenShiftModalFunc()" class="bg-amber-500 hover:bg-amber-600 px-2.5 py-1 rounded-lg text-[10px] font-black text-white shadow-sm flex items-center gap-1">
+                    <i class="fa-solid fa-lock-open text-[9px]"></i> Mở Ca
+                </button>
+            </template>
+
+            <button @click="logout()" class="p-1.5 text-blue-100 hover:text-white" title="Đăng xuất">
+                <i class="fa-solid fa-power-off text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 2. NỘI DUNG CHÍNH -->
+    <main style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);" class="flex-1 overflow-hidden relative">
+
+        <!-- ================= TAB 1: SƠ ĐỒ KHUÔN BÁNH ================= -->
+        <div x-show="currentTab === 'tables'" class="h-full bg-slate-100 p-3 overflow-y-auto space-y-3 mobile-scroll pb-32">
+            <div class="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                <div>
+                    <h2 class="font-black text-sm text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-fire-burner text-amber-500"></i> Máy & Khuôn Nướng
+                    </h2>
+                    <p class="text-[10px] text-slate-400">Chọn khuôn để quan sát vị trí 6 bánh</p>
+                </div>
+                
+                <div class="flex items-center gap-1.5">
+                    <button @click="toggleMultiCheckoutMode()" 
+                            :class="isMultiCheckoutMode ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 border border-slate-300'"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span x-text="isMultiCheckoutMode ? 'Hủy gộp' : 'Thu gộp'"></span>
+                    </button>
+
+                    <select x-model="selectedAreaFilter" class="bg-slate-50 border rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#0072bc]">
+                        <template x-for="area in areas" :key="area">
+                            <option :value="area" x-text="area"></option>
+                        </template>
+                    </select>
+
+                    <template x-if="hasPermission(['Quản lý'])">
+                        <button type="button" 
+                                @click="openAreaManageModal()" 
+                                class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 text-[#0072bc] flex items-center justify-center text-xs shadow-xs" 
+                                title="Cài đặt khuôn">
+                            <i class="fa-solid fa-gear"></i>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Khung 6 Vị Trí Bánh -->
+            <div class="bg-white p-3 rounded-2xl border-2 border-slate-300 shadow-sm">
+                <div class="flex justify-between items-center text-xs font-bold text-slate-500 mb-2 border-b pb-1">
+                    <span>MẶT KHUÔN (<span class="text-[#0072bc]" x-text="selectedAreaFilter"></span>)</span>
+                    <span class="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span x-text="isMultiCheckoutMode ? 'Chọn các kẹp cần gộp' : '6 Vị Trí Kẹp'"></span>
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2.5">
+                    <template x-for="(slot, idx) in filteredTables" :key="slot.id">
+                        <div @click="isMultiCheckoutMode ? (slot.status === 'serving' && toggleSlotSelection(slot.id)) : handleSlotClick(slot)"
+                            class="relative border-2 rounded-xl p-2 min-h-[135px] flex flex-col justify-between transition cursor-pointer select-none active:scale-95 shadow-sm overflow-hidden"
+                            :class="{
+                                'ring-4 ring-emerald-500 border-emerald-600 bg-emerald-50': selectedSlotsForCheckout.includes(slot.id),
+                                'border-amber-500 bg-amber-50': slot.status === 'serving' && !selectedSlotsForCheckout.includes(slot.id),
+                                'border-dashed border-slate-300 bg-slate-50 opacity-60': slot.status !== 'serving' && isMultiCheckoutMode,
+                                'border-dashed border-slate-300 bg-slate-50': slot.status !== 'serving' && !isMultiCheckoutMode
+                            }">
+                            
+                            <template x-if="isMultiCheckoutMode && slot.status === 'serving'">
+                                <div class="absolute top-1 right-1 z-10">
+                                    <input type="checkbox" :checked="selectedSlotsForCheckout.includes(slot.id)" class="w-4 h-4 text-emerald-600 rounded pointer-events-none">
+                                </div>
+                            </template>
+
+                            <div class="flex justify-between items-center border-b border-slate-200 pb-1">
+                                <span class="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center shadow-xs"
+                                      :class="slot.status === 'serving' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'"
+                                      x-text="idx + 1"></span>
+                                <span class="text-[8.5px] font-black px-1.5 py-0.5 rounded tracking-tighter"
+                                      :class="slot.status === 'serving' ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-500'"
+                                      x-text="slot.status === 'serving' ? 'ĐANG NƯỚNG' : 'TRỐNG'"></span>
+                            </div>
+
+                            <div class="py-1 flex-1 flex flex-col justify-center">
+                                <template x-if="tableOrders[slot.id] && tableOrders[slot.id].length > 0">
+                                    <div>
+                                        <p class="font-black text-xs text-slate-900 line-clamp-2 leading-tight" 
+                                           x-text="tableOrders[slot.id][0].name"></p>
+                                        <p class="text-[10px] text-[#0072bc] font-extrabold mt-0.5" 
+                                           x-text="tableOrders[slot.id][0].qty + ' bánh - ' + Number(tableOrders[slot.id][0].price * tableOrders[slot.id][0].qty).toLocaleString() + 'đ'"></p>
+                                    </div>
+                                </template>
+                                <template x-if="!tableOrders[slot.id] || tableOrders[slot.id].length === 0">
+                                    <div class="text-center py-2">
+                                        <i class="fa-solid fa-plus text-slate-300 text-xs block mb-0.5"></i>
+                                        <p class="text-[10px] text-slate-400 font-bold italic">Bấm kẹp bánh</p>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <template x-if="slot.status === 'serving' && !isMultiCheckoutMode">
+                                <button type="button"
+                                        @click.stop.prevent="handleCheckoutSlot(slot)" 
+                                        class="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-[10px] font-black shadow flex items-center justify-center gap-1 z-10 transition">
+                                    <i class="fa-solid fa-check"></i> Xong / Giao Khách
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <template x-if="hasPermission(['Quản lý'])">
+                <div class="text-center pt-1 pb-4">
+                    <button type="button" @click="resetCurrentMoldSlots()" class="text-xs text-slate-500 underline font-semibold">
+                        <i class="fa-solid fa-rotate"></i> Tạo lại 6 vị trí chuẩn cho khuôn này
+                    </button>
+                </div>
+            </template>
+        </div>
+
+        <!-- THANH NỔI XÁC NHẬN GỘP ĐƠN -->
+        <div x-show="isMultiCheckoutMode && selectedSlotsForCheckout.length > 0"
+             style="bottom: calc(env(safe-area-inset-bottom, 0px) + 68px);"
+             class="fixed left-2 right-2 bg-slate-900 text-white rounded-2xl p-3 shadow-2xl flex items-center justify-between z-40 border border-slate-700 animate-fadeIn">
+            <div>
+                <p class="text-xs font-bold text-amber-400" x-text="'Đã chọn: ' + selectedSlotsForCheckout.length + ' vị trí bánh'"></p>
+                <p class="text-sm font-black text-white" x-text="'Tổng: ' + multiCheckoutTotal.toLocaleString() + 'đ'"></p>
+            </div>
+            <button @click="openMultiPaymentModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow flex items-center gap-1.5">
+                <i class="fa-solid fa-money-bill-wave"></i> Thu Tiền Gộp (<span x-text="selectedSlotsForCheckout.length"></span>)
+            </button>
+        </div>
+
+        <!-- ================= TAB 2: CHỌN MÓN / ORDER CHO VỊ TRÍ KẸP ================= -->
+        <div x-show="currentTab === 'pos'" class="h-full flex flex-col bg-slate-100 relative">
+            <div class="p-2 bg-white border-b border-slate-200 space-y-2 flex-shrink-0 shadow-sm">
+                <div class="flex items-center justify-between text-xs bg-amber-50 p-2 rounded-xl border border-amber-200">
+                    <div class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-cookie-bite text-amber-600 text-sm"></i>
+                        <span class="font-bold text-slate-700">Đang kẹp vào:</span>
+                        <span class="font-black text-amber-800" x-text="selectedTable ? (selectedTable.name + ' (' + selectedTable.area + ')') : 'Chưa chọn vị trí'"></span>
+                    </div>
+                    <button @click="currentTab = 'tables'" class="text-[11px] font-bold text-[#0072bc] bg-white px-2 py-1 rounded-lg border border-blue-200">
+                        Đổi vị trí
+                    </button>
+                </div>
+
+                <div class="flex gap-1.5 overflow-x-auto mobile-scroll py-0.5">
+                    <template x-for="cat in categories" :key="cat">
+                        <button @click="activeCategory = cat" 
+                            :class="activeCategory === cat ? 'bg-[#0072bc] text-white font-bold' : 'bg-slate-100 text-slate-700 border border-slate-200'"
+                            class="px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition flex-shrink-0" x-text="cat"></button>
+                    </template>
+                </div>
+
+                <div class="relative">
+                    <input type="text" x-model="searchQuery" placeholder="Tìm tên loại bánh, nhân bánh..." class="w-full pl-8 pr-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#0072bc]">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                </div>
+            </div>
+
+            <div class="flex-1 p-2 overflow-y-auto mobile-scroll pb-36">
+                <div class="grid grid-cols-2 gap-2">
+                    <template x-for="item in filteredMenu" :key="item.id">
+                        <div @click="addToOrder(item)" 
+                            class="bg-white border border-slate-200 rounded-xl p-2 shadow-sm active:scale-95 transition flex flex-col justify-between select-none relative overflow-hidden">
+                            <div class="w-full h-24 bg-slate-100 rounded-lg overflow-hidden relative mb-1.5 flex items-center justify-center">
+                                <template x-if="item.image">
+                                    <img :src="item.image" loading="lazy" class="w-full h-full object-cover">
+                                </template>
+                                <template x-if="!item.image">
+                                    <i class="fa-solid fa-cookie-bite text-amber-300 text-3xl"></i>
+                                </template>
+                                <span class="absolute top-1 right-1 text-[8px] font-black uppercase px-1 py-0.5 rounded bg-slate-900/70 text-white" x-text="item.category"></span>
+                            </div>
+
+                            <div>
+                                <p class="font-bold text-xs text-slate-800 line-clamp-1" x-text="item.name"></p>
+                                <p class="text-xs font-black text-[#0072bc] mt-0.5" x-text="Number(item.price || 0).toLocaleString() + 'đ'"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- THANH THAO TÁC NỔI -->
+            <div x-show="currentOrder.items.length > 0" 
+                 style="bottom: calc(env(safe-area-inset-bottom, 0px) + 68px);"
+                 class="fixed left-2 right-2 bg-slate-900 text-white rounded-2xl p-2.5 shadow-2xl flex flex-col gap-2 z-40 border border-slate-700">
+                
+                <div class="flex items-center justify-between border-b border-slate-700/80 pb-2">
+                    <div class="flex-1 pr-2">
+                        <p class="text-xs font-black text-amber-400 truncate" x-text="currentOrder.items[0]?.name"></p>
+                        <p class="text-[10px] text-slate-300 font-extrabold" x-text="finalTotal().toLocaleString() + 'đ'"></p>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <div class="flex items-center bg-slate-800 border border-slate-600 rounded-lg overflow-hidden">
+                            <button @click="updateCurrentQty(-1)" class="w-7 h-7 flex items-center justify-center font-black text-slate-200 active:bg-slate-700">-</button>
+                            <span class="w-6 text-center text-xs font-black text-white" x-text="currentOrder.items[0]?.qty"></span>
+                            <button @click="updateCurrentQty(1)" class="w-7 h-7 flex items-center justify-center font-black text-slate-200 active:bg-slate-700">+</button>
+                        </div>
+
+                        <button @click="clearCurrentOrder()" class="w-7 h-7 bg-rose-600/30 text-rose-400 border border-rose-500/50 rounded-lg flex items-center justify-center active:bg-rose-600 active:text-white" title="Xóa chọn lại">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button @click="saveTableOrder()" class="py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 rounded-xl text-xs font-black text-white shadow flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-fire"></i> Lưu Vào Khuôn
+                    </button>
+                    <button @click="openPaymentModal()" class="py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl text-xs font-black text-white shadow flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-money-bill-wave"></i> Thu Tiền Luôn
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: QUẢN LÝ MENU BÁNH ================= -->
+        <div x-show="currentTab === 'menu'" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-24">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h2 class="font-black text-sm text-slate-800">Danh Mục Món Bánh</h2>
+                <template x-if="hasPermission(['Quản lý'])">
+                    <button type="button" 
+                            @click="openMenuModal()" 
+                            class="px-3 py-1.5 bg-[#0072bc] hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm active:scale-95 transition">
+                        + Thêm Món
+                    </button>
+                </template>
+            </div>
+
+            <div class="space-y-2">
+                <template x-for="m in menuItems" :key="m.id">
+                    <div class="flex items-center justify-between p-2.5 border border-slate-200 rounded-xl bg-slate-50">
+                        <div class="flex items-center gap-2.5">
+                            <img :src="m.image || 'https://via.placeholder.com/50'" class="w-10 h-10 rounded-lg object-cover border">
+                            <div>
+                                <p class="font-bold text-xs text-slate-800" x-text="m.name"></p>
+                                <span class="text-[10px] text-slate-500 bg-white px-1.5 py-0.2 rounded border" x-text="m.category"></span>
+                                <span class="text-xs font-black text-[#0072bc] ml-1" x-text="Number(m.price || 0).toLocaleString() + 'đ'"></span>
+                            </div>
+                        </div>
+                        
+                        <template x-if="hasPermission(['Quản lý'])">
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" 
+                                        @click.stop.prevent="openEditMenuModal(m)" 
+                                        class="w-8 h-8 flex items-center justify-center text-blue-600 hover:text-white hover:bg-blue-600 bg-white border border-blue-200 rounded-lg active:scale-90 transition shadow-xs"
+                                        title="Sửa món">
+                                    <i class="fa-solid fa-pen text-xs"></i>
+                                </button>
+                                <button type="button" 
+                                        @click.stop.prevent="deleteMenuItem(m.id)" 
+                                        class="w-8 h-8 flex items-center justify-center text-rose-600 hover:text-white hover:bg-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs"
+                                        title="Xóa món">
+                                    <i class="fa-solid fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: SỔ QUỸ THU CHI (CÓ NÚT SỬA, XÓA VÀ FORM CHUYÊN NGHIỆP) ================= -->
+        <div x-show="currentTab === 'cashflow' && hasPermission(['Quản lý'])" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-24">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div>
+                    <h2 class="font-black text-sm text-slate-800">Sổ Quỹ Thu Chi</h2>
+                    <p class="text-[10px] text-slate-400">Theo dõi dòng tiền thu chi của quán</p>
+                </div>
+                <!-- 2 Nút mở Modal lập phiếu chuyên nghiệp -->
+                <div class="flex gap-1.5">
+                    <button type="button" @click="openCashFlowModal('THU')" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs">
+                        <i class="fa-solid fa-plus text-[10px]"></i>Thu
+                    </button>
+                    <button type="button" @click="openCashFlowModal('CHI')" class="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs">
+                        <i class="fa-solid fa-minus text-[10px]"></i>Chi
+                    </button>
+                </div>
+            </div>
+
+            <!-- Khối tổng kết dòng tiền -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                    <p class="text-[10px] font-bold text-emerald-700 uppercase">TỔNG THU (BÁN BÁNH + NGOÀI)</p>
+                    <p class="text-sm font-black text-emerald-600 mt-0.5" x-text="(totalAutoPosIncome + totalManualIncome).toLocaleString() + 'đ'"></p>
+                </div>
+                <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                    <p class="text-[10px] font-bold text-rose-700 uppercase">TỔNG CHI TIÊU VẬN HÀNH</p>
+                    <p class="text-sm font-black text-rose-600 mt-0.5" x-text="totalExpenses.toLocaleString() + 'đ'"></p>
+                </div>
+            </div>
+
+            <!-- Danh sách phiếu thu chi kèm nút SỬA & XÓA trên từng dòng -->
+            <div class="space-y-2">
+                <template x-if="filteredCashFlowList.length === 0">
+                    <p class="text-center text-xs text-slate-400 py-6 italic">Chưa có giao dịch thu chi nào.</p>
+                </template>
+                <template x-for="flow in filteredCashFlowList" :key="flow.id">
+                    <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50 flex items-center justify-between text-xs space-x-2">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase"
+                                      :class="flow.type === 'THU' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
+                                      x-text="flow.type === 'THU' ? 'THU' : 'CHI'"></span>
+                                <strong class="font-bold text-slate-800" x-text="flow.category"></strong>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="flow.note ? flow.note : (flow.recipient ? 'Đối tác: ' + flow.recipient : '')"></p>
+                            <p class="text-[9.5px] text-slate-400 font-mono" x-text="new Date(flow.timestamp).toLocaleString('vi-VN')"></p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs" :class="flow.type === 'THU' ? 'text-emerald-600' : 'text-rose-600'" 
+                                  x-text="(flow.type === 'THU' ? '+' : '-') + Number(flow.amount || 0).toLocaleString() + 'đ'"></span>
+                            
+                            <!-- NÚT SỬA & XÓA PHIẾU THU CHI -->
+                            <div class="flex items-center gap-1">
+                                <button type="button" 
+                                        @click.stop.prevent="openEditCashFlowModal(flow)" 
+                                        class="w-7 h-7 flex items-center justify-center text-blue-600 bg-white border border-blue-200 rounded-lg active:scale-90 transition shadow-xs"
+                                        title="Sửa phiếu">
+                                    <i class="fa-solid fa-pen text-[10px]"></i>
+                                </button>
+                                <button type="button" 
+                                        @click.stop.prevent="deleteCashFlow(flow.id)" 
+                                        class="w-7 h-7 flex items-center justify-center text-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs"
+                                        title="Xóa phiếu">
+                                    <i class="fa-solid fa-trash text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: LỊCH SỬ HÓA ĐƠN ================= -->
+        <div x-show="currentTab === 'history_orders'" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-24">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h2 class="font-black text-sm text-slate-800">Lịch Sử Đơn Bánh Đã Bán</h2>
+                <span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200" 
+                      x-text="'Tổng: ' + filteredOrdersList.length + ' đơn'"></span>
+            </div>
+
+            <div class="space-y-2">
+                <template x-for="order in filteredOrdersList" :key="order.id">
+                    <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50 flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-xs text-slate-800" x-text="order.table + ' (' + (order.paymentMethod || 'Tiền mặt') + ')'"></p>
+                            <p class="text-[10px] text-slate-400" x-text="new Date(order.timestamp).toLocaleString('vi-VN') + ' | ' + (order.cashier || 'Thu ngân')"></p>
+                        </div>
+                        <span class="font-black text-xs text-emerald-700" x-text="Number(order.total || 0).toLocaleString() + 'đ'"></span>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 3. BOTTOM NAVIGATION BAR -->
+    <nav style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);" 
+         class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around z-30 select-none shadow-lg pt-1.5">
+        <button @click="switchTab('tables')" :class="currentTab === 'tables' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
+            <i class="fa-solid fa-grip text-lg"></i>
+            <span class="text-xs font-bold mt-0.5">Khuôn bánh</span>
+        </button>
+
+        <button @click="switchTab('pos')" :class="currentTab === 'pos' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
+            <i class="fa-solid fa-cookie-bite text-lg"></i>
+            <span class="text-xs font-bold mt-0.5">Chọn bánh</span>
+        </button>
+
+        <button @click="switchTab('menu')" :class="currentTab === 'menu' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
+            <i class="fa-solid fa-list-check text-lg"></i>
+            <span class="text-xs font-bold mt-0.5">Thực đơn</span>
+        </button>
+
+        <!-- CHỈ HIỂN THỊ NÚT SỔ QUỸ NẾU LÀ TÀI KHOẢN QUẢN LÝ -->
+        <template x-if="hasPermission(['Quản lý'])">
+            <button @click="switchTab('cashflow')" :class="currentTab === 'cashflow' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
+                <i class="fa-solid fa-wallet text-lg"></i>
+                <span class="text-xs font-bold mt-0.5">Sổ Quỹ</span>
+            </button>
+        </template>
+
+        <button @click="switchTab('history_orders')" :class="currentTab === 'history_orders' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
+            <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+            <span class="text-xs font-bold mt-0.5">Lịch sử</span>
+        </button>
+    </nav>
+
+    <!-- ================= MODAL LẬP / SỬA PHIẾU THU CHI (FORM CHUYÊN NGHIỆP) ================= -->
+    <div x-show="showCashFlowModal" 
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" 
+         style="display: none;">
+        <div @click.outside="showCashFlowModal = false" 
+             class="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-invoice-dollar" :class="cashFlowForm.type === 'THU' ? 'text-emerald-600' : 'text-rose-600'"></i>
+                    <span x-text="isEditingCashFlow ? 'Sửa Phiếu Thu/Chi' : (cashFlowForm.type === 'THU' ? 'Lập Phiếu Thu Tiền' : 'Lập Phiếu Chi Tiền')"></span>
+                </h3>
+                <button type="button" @click="showCashFlowModal = false" class="text-slate-400 p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="saveCashFlow()" class="space-y-2.5">
+                <!-- Chọn Loại: Thu (+) hoặc Chi (-) -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Loại giao dịch</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" @click="cashFlowForm.type = 'THU'" 
+                                :class="cashFlowForm.type === 'THU' ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 text-slate-700'"
+                                class="py-1.5 rounded-xl text-xs font-bold transition">
+                            Phiếu Thu (+)
+                        </button>
+                        <button type="button" @click="cashFlowForm.type = 'CHI'" 
+                                :class="cashFlowForm.type === 'CHI' ? 'bg-rose-600 text-white font-black' : 'bg-slate-100 text-slate-700'"
+                                class="py-1.5 rounded-xl text-xs font-bold transition">
+                            Phiếu Chi (-)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hạng mục thu/chi gợi ý -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Hạng mục (*)</label>
+                    <select x-model="cashFlowForm.category" required class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-bold text-slate-800">
+                        <template x-if="cashFlowForm.type === 'CHI'">
+                            <optgroup label="Khoản Chi Tiêu">
+                                <template x-for="c in expenseCategories" :key="c">
+                                    <option :value="c" x-text="c"></option>
+                                </template>
+                            </optgroup>
+                        </template>
+                        <template x-if="cashFlowForm.type === 'THU'">
+                            <optgroup label="Khoản Thu Ngoài">
+                                <template x-for="c in incomeCategories" :key="c">
+                                    <option :value="c" x-text="c"></option>
+                                </template>
+                            </optgroup>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Số tiền -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Số tiền (VNĐ) (*)</label>
+                    <input type="number" min="1000" step="1000" x-model.number="cashFlowForm.amount" placeholder="VD: 50000" required class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-black text-[#0072bc]">
+                </div>
+
+                <!-- Người nộp/Người nhận -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5" x-text="cashFlowForm.type === 'THU' ? 'Người nộp tiền' : 'Người nhận / Cửa hàng'"></label>
+                    <input type="text" x-model="cashFlowForm.recipient" placeholder="VD: Đại lý bột, Tiệm tạp hóa..." class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs">
+                </div>
+
+                <!-- Ghi chú chi tiết -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Ghi chú diễn giải</label>
+                    <input type="text" x-model="cashFlowForm.note" placeholder="VD: Mua thêm 2 bình gas, dầu ăn..." class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs">
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" @click="showCashFlowModal = false" class="flex-1 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl">Hủy</button>
+                    <button type="submit" 
+                            :class="cashFlowForm.type === 'THU' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'"
+                            class="flex-1 py-2 text-white font-black text-xs rounded-xl shadow">
+                        Lưu Phiếu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL MỞ CA LÀM VIỆC ================= -->
+    <div x-show="showOpenShiftModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.outside="showOpenShiftModal = false" class="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-lock-open text-amber-500"></i> Mở Ca Bán Hàng Mới
+                </h3>
+                <button type="button" @click="showOpenShiftModal = false" class="text-slate-400 p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form @submit.prevent="confirmOpenShift()" class="space-y-2.5">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Chọn tên ca</label>
+                    <select x-model="openShiftForm.shiftName" class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-bold text-[#0072bc]">
+                        <option value="Ca 1 (Sáng)">Ca 1 (Sáng)</option>
+                        <option value="Ca 2 (Chiều/Tối)">Ca 2 (Chiều/Tối)</option>
+                        <option value="Ca Full-time">Ca Full-time</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Tiền quỹ đầu ca (*)</label>
+                    <input type="number" step="1000" min="0" x-model.number="openShiftForm.initialCash" required class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-black text-[#0072bc]">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Ghi chú đầu ca</label>
+                    <input type="text" x-model="openShiftForm.note" placeholder="VD: Nhận đủ 200k tiền lẻ..." class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs">
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" @click="showOpenShiftModal = false" class="flex-1 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl">Hủy</button>
+                    <button type="submit" class="flex-1 py-2 bg-amber-500 text-white font-bold text-xs rounded-xl shadow">Bắt Đầu Ca</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL KẾT CA / BÀN GIAO TIỀN ================= -->
+    <div x-show="showCloseShiftModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.outside="showCloseShiftModal = false" class="bg-white w-full max-w-sm rounded-2xl p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-calculator text-[#0072bc]"></i> Kết Ca & Bàn Giao Doanh Thu
+                </h3>
+                <button type="button" @click="showCloseShiftModal = false" class="text-slate-400 p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+                <div class="flex justify-between"><span>Thu ngân:</span><strong class="text-slate-800" x-text="currentShift?.cashier"></strong></div>
+                <div class="flex justify-between"><span>Ca:</span><strong class="text-blue-700" x-text="currentShift?.shiftName"></strong></div>
+                <div class="flex justify-between"><span>Tiền quỹ ban đầu:</span><span x-text="(currentShift?.initialCash || 0).toLocaleString() + 'đ'"></span></div>
+                <div class="flex justify-between text-emerald-600 font-bold"><span>+ Tiền mặt bán bánh:</span><span x-text="'+' + shiftStats.cashIncome.toLocaleString() + 'đ'"></span></div>
+                <div class="flex justify-between text-blue-600 font-bold"><span>+ Chuyển khoản (VietQR):</span><span x-text="shiftStats.bankIncome.toLocaleString() + 'đ'"></span></div>
+                
+                <div class="flex justify-between font-black text-sm border-t border-slate-200 pt-1.5 text-slate-900">
+                    <span>TIỀN MẶT KÉT LÝ THUYẾT:</span>
+                    <span class="text-[#0072bc]" x-text="shiftStats.systemExpectedCash.toLocaleString() + 'đ'"></span>
+                </div>
+            </div>
+
+            <form @submit.prevent="confirmCloseShift()" class="space-y-2.5">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Tiền mặt thực tế trong két (*)</label>
+                    <input type="number" step="1000" min="0" x-model.number="closeShiftForm.actualCash" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-black text-emerald-600">
+                    
+                    <div class="flex justify-between text-xs mt-1 font-bold">
+                        <span>Chênh lệch két:</span>
+                        <span :class="(closeShiftForm.actualCash - shiftStats.systemExpectedCash) < 0 ? 'text-rose-600' : 'text-emerald-600'" 
+                              x-text="((closeShiftForm.actualCash - shiftStats.systemExpectedCash) >= 0 ? '+' : '') + (closeShiftForm.actualCash - shiftStats.systemExpectedCash).toLocaleString() + 'đ'"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Ghi chú bàn giao</label>
+                    <input type="text" x-model="closeShiftForm.note" placeholder="VD: Đã bàn giao két đủ..." class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs">
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" @click="showCloseShiftModal = false" class="flex-1 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl">Hủy</button>
+                    <button type="submit" class="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow">Xác Nhận Kết Ca</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL THÊM / SỬA MÓN BÁNH ================= -->
+    <div x-show="showMenuModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.outside="showMenuModal = false" class="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm" x-text="isEditingMenu ? 'Sửa Món Bánh' : 'Thêm Món Bánh Mới'"></h3>
+                <button type="button" @click="showMenuModal = false" class="text-slate-400 p-1"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+
+            <form @submit.prevent="saveMenu()" class="space-y-2.5">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Tên món bánh (*)</label>
+                    <input type="text" x-model="menuForm.name" placeholder="VD: Bánh kẹp pate trứng muối..." required class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:border-[#0072bc]">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Giá bán (VNĐ) (*)</label>
+                    <input type="number" x-model.number="menuForm.price" placeholder="VD: 20000" required class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-black text-[#0072bc] focus:outline-none focus:border-[#0072bc]">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Phân loại</label>
+                    <select x-model="menuForm.category" class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-bold">
+                        <template x-for="c in categories.filter(x => x !== 'Tất cả')" :key="c">
+                            <option :value="c" x-text="c"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Link hình ảnh</label>
+                    <input type="url" x-model="menuForm.image" placeholder="https://..." class="w-full px-3 py-1.5 bg-slate-50 border rounded-xl text-xs">
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" @click="showMenuModal = false" class="flex-1 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl">Hủy</button>
+                    <button type="submit" class="flex-1 py-2 bg-[#0072bc] hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow">Lưu Món</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL QUẢN LÝ KHUÔN -->
+    <div x-show="showAreaModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" style="display: none;">
+        <div @click.outside="showAreaModal = false" class="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm">Quản Lý Danh Sách Khuôn</h3>
+                <button type="button" @click="showAreaModal = false" class="text-slate-400 p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex gap-1.5">
+                <input type="text" x-model="newAreaName" placeholder="Tên khuôn..." class="flex-1 px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:border-[#0072bc]">
+                <button type="button" @click="addNewArea()" class="px-3 py-1.5 bg-[#0072bc] hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow">+ Thêm</button>
+            </div>
+            <div class="space-y-1.5 max-h-48 overflow-y-auto pt-2">
+                <template x-for="(area, index) in areas" :key="index">
+                    <div class="flex justify-between items-center p-2 bg-slate-50 border rounded-xl text-xs font-bold">
+                        <span x-text="area"></span>
+                        <button type="button" @click="deleteArea(area)" class="text-rose-500 hover:text-rose-700 p-1.5"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL THANH TOÁN LẺ 1 VỊ TRÍ -->
+    <div x-show="showPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3" style="display: none;">
+        <div class="bg-white w-full max-w-sm p-4 rounded-2xl shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm">Giao Bánh & Thu Tiền</h3>
+                <button type="button" @click="showPaymentModal = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border space-y-1 text-xs">
+                <div class="flex justify-between"><span>Vị trí kẹp:</span><strong class="text-amber-800" x-text="selectedTable?.name + ' (' + selectedTable?.area + ')'"></strong></div>
+                <div class="flex justify-between"><span>Tiền bánh:</span><span x-text="subTotal().toLocaleString() + 'đ'"></span></div>
+                <div class="flex justify-between font-black text-sm border-t pt-1 text-[#0072bc]">
+                    <span>TỔNG THU:</span>
+                    <span x-text="finalTotal().toLocaleString() + 'đ'"></span>
+                </div>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Phương thức thanh toán</label>
+                <select x-model="paymentMethod" class="w-full p-2 bg-slate-50 border rounded-xl text-xs font-bold text-[#0072bc]">
+                    <option value="Tiền mặt">Tiền mặt</option>
+                    <option value="Chuyển khoản">Chuyển khoản Ngân hàng (VietQR)</option>
+                </select>
+            </div>
+            <template x-if="paymentMethod === 'Chuyển khoản' && storeSettings.bankAccount">
+                <div class="text-center p-2 bg-slate-50 rounded-xl border flex flex-col items-center">
+                    <p class="text-[10px] text-slate-500 font-bold mb-1">Quét mã chuyển khoản nhanh VietQR:</p>
+                    <img :src="getVietQrUrl(finalTotal(), 'Banh kep ' + (selectedTable ? selectedTable.name : ''))" class="w-36 h-36 border p-1 rounded-lg bg-white shadow-sm">
+                </div>
+            </template>
+            <button type="button" @click="confirmCheckout()" class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow hover:bg-emerald-700">
+                Xác Nhận Đã Giao Bánh & Trống Kẹp
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL THANH TOÁN GỘP NHIỀU VỊ TRÍ KẸP -->
+    <div x-show="showMultiPaymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3" style="display: none;">
+        <div class="bg-white w-full max-w-sm p-4 rounded-2xl shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-slate-800 text-sm">Thanh Toán Gộp (<span x-text="selectedSlotsForCheckout.length"></span> Bánh)</h3>
+                <button type="button" @click="showMultiPaymentModal = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="bg-slate-50 p-2.5 rounded-xl border space-y-1.5 text-xs max-h-40 overflow-y-auto">
+                <template x-for="(it, idx) in multiCheckoutItems" :key="idx">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-1 last:border-none">
+                        <span class="font-bold text-slate-800" x-text="it.name"></span>
+                        <span class="font-black text-[#0072bc]" x-text="Number(it.price || 0).toLocaleString() + 'đ'"></span>
+                    </div>
+                </template>
+            </div>
+            <div class="flex justify-between font-black text-base pt-1 text-[#0072bc] border-t">
+                <span>TỔNG CỘNG:</span>
+                <span x-text="multiCheckoutTotal.toLocaleString() + 'đ'"></span>
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Phương thức thanh toán</label>
+                <select x-model="paymentMethod" class="w-full p-2 bg-slate-50 border rounded-xl text-xs font-bold text-[#0072bc]">
+                    <option value="Tiền mặt">Tiền mặt</option>
+                    <option value="Chuyển khoản">Chuyển khoản Ngân hàng (VietQR)</option>
+                </select>
+            </div>
+            <template x-if="paymentMethod === 'Chuyển khoản' && storeSettings.bankAccount">
+                <div class="text-center p-2 bg-slate-50 rounded-xl border flex flex-col items-center">
+                    <p class="text-[10px] text-slate-500 font-bold mb-1">Quét mã chuyển khoản nhanh VietQR:</p>
+                    <img :src="getVietQrUrl(multiCheckoutTotal, 'Thanh toan ' + selectedSlotsForCheckout.length + ' banh')" class="w-36 h-36 border p-1 rounded-lg bg-white shadow-sm">
+                </div>
+            </template>
+            <button type="button" @click="confirmMultiCheckout()" class="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow hover:bg-emerald-700">
+                Xác Nhận Thu Tiền & Trống Toàn Bộ Kẹp
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>
