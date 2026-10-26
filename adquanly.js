@@ -37,7 +37,7 @@ function cafeApp() {
         // Dữ liệu Bánh & Khuôn
         activeCategory: 'Tất cả',
         searchQuery: '',
-        categories: ['Tất cả', 'Bánh kẹp mặn', 'Bánh kẹp ngọt', 'Nước uống'],
+        categories: ['Tất cả', 'Bánh mặn', 'Bánh ngọt', 'Nước uống'],
         menuItems: [],
         tables: [], 
         areas: ['Khuôn 1', 'Khuôn 2'], 
