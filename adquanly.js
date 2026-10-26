@@ -81,7 +81,7 @@ function cafeApp() {
         // Quản lý ca làm việc & Modal xác nhận đăng xuất
         showOpenShiftModal: false,
         showCloseShiftModal: false,
-        showLogoutConfirmModal: false, // Hộp thoại xử lý đột xuất khi đăng xuất
+        showLogoutConfirmModal: false, 
         openShiftForm: { shiftName: 'Ca 1 (Sáng)', initialCash: 200000, note: '' },
         closeShiftForm: { actualCash: 0, note: '' },
 
@@ -89,6 +89,12 @@ function cafeApp() {
         isMultiCheckoutMode: false,
         selectedSlotsForCheckout: [],
         showMultiPaymentModal: false,
+
+        // Bộ lọc ngày cho Tab Sổ Quỹ & Tab Lịch Sử (Mặc định lấy ngày hôm nay theo giờ địa phương)
+        cashFlowStartDate: new Date().toLocaleDateString('en-CA'),
+        cashFlowEndDate: new Date().toLocaleDateString('en-CA'),
+        orderHistoryStartDate: new Date().toLocaleDateString('en-CA'),
+        orderHistoryEndDate: new Date().toLocaleDateString('en-CA'),
 
         // ================= KHỞI TẠO DỮ LIỆU REALTIME =================
         init() {
@@ -105,11 +111,11 @@ function cafeApp() {
                     this.menuItems = Object.keys(d).map(k => ({ id: k, ...d[k] }));
                 } else {
                     const sampleItems = [
-                        { name: 'Bánh kẹp Patê Chà bông', price: 20000, category: 'Bánh kẹp mặn' },
-                        { name: 'Bánh kẹp Phô mai Bắp', price: 22000, category: 'Bánh kẹp mặn' },
-                        { name: 'Bánh kẹp Trứng muối Chà bông', price: 25000, category: 'Bánh kẹp mặn' },
-                        { name: 'Bánh kẹp Bơ sữa Lá dứa', price: 18000, category: 'Bánh kẹp ngọt' },
-                        { name: 'Bánh kẹp Socola Chuối', price: 20000, category: 'Bánh kẹp ngọt' }
+                        { name: 'Bánh kẹp Patê Chà bông', price: 20000, category: 'Bánh mặn' },
+                        { name: 'Bánh kẹp Phô mai Bắp', price: 22000, category: 'Bánh mặn' },
+                        { name: 'Bánh kẹp Trứng muối Chà bông', price: 25000, category: 'Bánh mặn' },
+                        { name: 'Bánh kẹp Bơ sữa Lá dứa', price: 18000, category: 'Bánh ngọt' },
+                        { name: 'Bánh kẹp Socola Chuối', price: 20000, category: 'Bánh ngọt' }
                     ];
                     sampleItems.forEach(it => db.ref('menu').push(it));
                 }
@@ -169,11 +175,185 @@ function cafeApp() {
                         this.currentShift = shiftData;
                         localStorage.setItem('pos_mobile_shift', JSON.stringify(shiftData));
                     } else {
-                        // Nếu trên cloud không còn ca (đã kết ca từ nơi khác), làm mới ở máy khách
                         this.currentShift = null;
                         localStorage.removeItem('pos_mobile_shift');
                     }
                 });
+            }
+        },
+
+        // ================= HÀM CHUYỂN ĐỔI NGÀY AN TOÀN TRÁNH LỖI LỆCH MÚI GIỜ =================
+        formatDateToLocalYMD(timestamp) {
+            if (!timestamp) return '';
+            const d = new Date(timestamp);
+            if (isNaN(d.getTime())) return '';
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        },
+
+        // ================= 1. LỌC VÀ QUẢN LÝ SỔ QUỸ (TAB 4) =================
+        get filteredCashFlowList() {
+            let list = [...this.cashFlowList];
+            
+            // Nếu là Quản lý: Lọc chính xác theo khoảng ngày
+            if (this.hasPermission(['Quản lý'])) {
+                const start = this.cashFlowStartDate;
+                const end = this.cashFlowEndDate;
+
+                list = list.filter(item => {
+                    const itemDate = this.formatDateToLocalYMD(item.timestamp);
+                    if (!itemDate) return false;
+                    return itemDate >= start && itemDate <= end;
+                });
+            }
+            return list.reverse();
+        },
+
+        // Xóa toàn bộ phiếu Sổ Quỹ đang lọc
+        deleteAllFilteredCashFlow() {
+            const itemsToDelete = this.filteredCashFlowList;
+            if (itemsToDelete.length === 0) {
+                alert('Không có phiếu thu chi nào trong khoảng ngày này để xóa!');
+                return;
+            }
+            if (confirm(`⚠️ CẢNH BÁO QUẢN LÝ:\nBạn có chắc muốn xóa vĩnh viễn TOÀN BỘ ${itemsToDelete.length} phiếu thu chi từ ngày ${this.cashFlowStartDate} đến ${this.cashFlowEndDate}?`)) {
+                itemsToDelete.forEach(item => {
+                    db.ref('cashFlow/' + item.id).remove();
+                });
+                alert(`Đã xóa sạch ${itemsToDelete.length} phiếu thu chi theo bộ lọc!`);
+            }
+        },
+
+        openCashFlowModal(type = 'CHI') {
+            this.isEditingCashFlow = false;
+            this.cashFlowForm = {
+                id: null,
+                type: type,
+                category: type === 'CHI' ? this.expenseCategories[0] : this.incomeCategories[0],
+                amount: 50000,
+                recipient: '',
+                note: ''
+            };
+            this.showCashFlowModal = true;
+        },
+
+        openEditCashFlowModal(flow) {
+            this.isEditingCashFlow = true;
+            this.cashFlowForm = {
+                id: flow.id,
+                type: flow.type || 'CHI',
+                category: flow.category || this.expenseCategories[0],
+                amount: Number(flow.amount || 0),
+                recipient: flow.recipient || '',
+                note: flow.note || '',
+                timestamp: flow.timestamp
+            };
+            this.showCashFlowModal = true;
+        },
+
+        saveCashFlow() {
+            const form = this.cashFlowForm;
+            if (!form.amount || Number(form.amount) <= 0) {
+                alert('Vui lòng nhập số tiền hợp lệ (> 0)!');
+                return;
+            }
+
+            const payload = {
+                type: form.type,
+                category: form.category,
+                amount: Number(form.amount),
+                recipient: (form.recipient || '').trim(),
+                note: (form.note || '').trim(),
+                creator: this.currentUser ? this.currentUser.name : 'Quản lý',
+                timestamp: this.isEditingCashFlow && form.timestamp ? form.timestamp : new Date().toISOString()
+            };
+
+            if (this.isEditingCashFlow && form.id) {
+                db.ref('cashFlow/' + form.id).update(payload).then(() => {
+                    alert('Đã cập nhật lại phiếu thu/chi thành công!');
+                    this.showCashFlowModal = false;
+                }).catch(err => alert('Lỗi: ' + err.message));
+            } else {
+                db.ref('cashFlow').push(payload).then(() => {
+                    alert(`Đã lưu phiếu ${payload.type === 'THU' ? 'thu' : 'chi'} thành công!`);
+                    this.showCashFlowModal = false;
+                }).catch(err => alert('Lỗi: ' + err.message));
+            }
+        },
+
+        deleteCashFlow(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa phiếu thu/chi này khỏi sổ quỹ?')) {
+                db.ref('cashFlow/' + id).remove().then(() => {
+                    alert('Đã xóa phiếu thành công!');
+                }).catch(err => alert('Lỗi: ' + err.message));
+            }
+        },
+
+        get totalAutoPosIncome() {
+            return this.ordersList.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        },
+
+        get totalManualIncome() {
+            return this.cashFlowList.filter(c => c.type === 'THU').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+        },
+
+        get totalExpenses() {
+            return this.cashFlowList.filter(c => c.type === 'CHI').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+        },
+
+        // ================= 2. LỌC VÀ QUẢN LÝ ĐƠN HÀNG (TAB 5) =================
+        get filteredOrdersList() {
+            // 1. Quản lý: Lọc chính xác theo khoảng ngày
+            if (this.hasPermission(['Quản lý'])) {
+                const start = this.orderHistoryStartDate;
+                const end = this.orderHistoryEndDate;
+
+                return this.ordersList.filter(o => {
+                    const orderDate = this.formatDateToLocalYMD(o.timestamp);
+                    if (!orderDate) return false;
+                    return orderDate >= start && orderDate <= end;
+                }).reverse();
+            }
+
+            // 2. Nhân viên: Chưa mở ca thì danh sách rỗng
+            if (!this.currentShift) {
+                return [];
+            }
+
+            // 3. Nhân viên: Lọc đơn phát sinh từ lúc mở ca và đúng thu ngân
+            const shiftStartTime = new Date(this.currentShift.startTime).getTime();
+            return this.ordersList.filter(o => {
+                if (!o.timestamp) return false;
+                const orderTime = new Date(o.timestamp).getTime();
+                const isMyOrder = (o.cashier === this.currentShift.cashier) || 
+                                  (o.cashierUsername === this.currentShift.username);
+                return orderTime >= shiftStartTime && isMyOrder;
+            }).reverse();
+        },
+
+        // Xóa 1 đơn hàng lẻ
+        deleteOrder(orderId) {
+            if (confirm('Bạn có chắc chắn muốn xóa đơn hàng này khỏi lịch sử?')) {
+                db.ref('orders/' + orderId).remove().then(() => {
+                    alert('Đã xóa đơn hàng thành công!');
+                }).catch(err => alert('Lỗi: ' + err.message));
+            }
+        },
+
+        // Xóa toàn bộ đơn hàng đang lọc
+        deleteAllFilteredOrders() {
+            const itemsToDelete = this.filteredOrdersList;
+            if (itemsToDelete.length === 0) {
+                alert('Không có đơn hàng nào trong khoảng ngày này để xóa!');
+                return;
+            }
+            if (confirm(`⚠️ CẢNH BÁO QUẢN LÝ:\nBạn có chắc chắn muốn xóa TOÀN BỘ ${itemsToDelete.length} đơn hàng từ ngày ${this.orderHistoryStartDate} đến ${this.orderHistoryEndDate}?`)) {
+                itemsToDelete.forEach(item => {
+                    db.ref('orders/' + item.id).remove();
+                });
+                alert(`Đã xóa sạch ${itemsToDelete.length} đơn hàng theo bộ lọc!`);
             }
         },
 
@@ -220,7 +400,6 @@ function cafeApp() {
             });
         },
 
-        // Phục hồi ca đang bán nếu có ca lưu trên Firebase
         restoreExistingShift(username) {
             db.ref('currentShifts/' + username).once('value', snap => {
                 const activeShift = snap.val();
@@ -237,33 +416,27 @@ function cafeApp() {
 
         // ================= XỬ LÝ ĐĂNG XUẤT ĐỘT XUẤT KHI CHƯA KẾT CA =================
         logout() {
-            // Nếu ca làm việc vẫn đang mở -> Bật hộp thoại hỏi rõ kết ca hay tạm thoát
             if (this.currentShift) {
                 this.showLogoutConfirmModal = true;
                 return;
             }
-            // Nếu không có ca thì đăng xuất ngay
             this.forceLogoutNow();
         },
 
-        // Tùy chọn 1: Bấm để Kết ca luôn trước khi thoát
         logoutAndCloseShift() {
             this.showLogoutConfirmModal = false;
             this.openCloseShiftModalFunc();
         },
 
-        // Tùy chọn 2: Tạm thoát ra nhưng GIỮ NGUYÊN CA LÀM VIỆC trên Firebase
         logoutAndKeepShift() {
             this.showLogoutConfirmModal = false;
-            // Chỉ xóa thông tin đăng nhập tạm của user trên máy, giữ ca trên Firebase
             this.currentUser = null;
             this.currentShift = null;
             localStorage.removeItem('pos_mobile_user');
             localStorage.removeItem('pos_mobile_shift');
-            alert('Đã đăng xuất tạm thời! Ca làm việc của bạn vẫn được lưu giữ an toàn.');
+            alert('Đã đăng xuất tạm thời! Ca làm việc của bạn vẫn được lưu giữ an toàn trên hệ thống.');
         },
 
-        // Đăng xuất hoàn toàn khi không có ca
         forceLogoutNow() {
             this.currentUser = null;
             this.currentShift = null;
@@ -292,7 +465,7 @@ function cafeApp() {
             this.currentTab = tabId;
         },
 
-        // ================= HÀM CHỐT CHẶN BẮT BUỘC MỞ CA (CHỐNG THẤT THOÁT) =================
+        // ================= HÀM CHỐT CHẶN BẮT BUỘC MỞ CA =================
         ensureShiftOpened() {
             if (this.hasPermission(['Quản lý'])) {
                 return true;
@@ -396,10 +569,24 @@ function cafeApp() {
                 closeNote: this.closeShiftForm.note || ''
             };
 
-            // Lưu báo cáo kết ca lên Firebase
+            // 1. Lưu báo cáo kết ca lên Firebase
             db.ref('shiftsHistory').push(shiftReport);
             
-            // Xóa ca đang mở trên Firebase
+            // 2. Gửi thông báo kết ca qua Telegram
+            const diffSign = diff >= 0 ? '+' : '';
+            const teleMsg = `📊 <b>BÁO CÁO KẾT CA BÁN HÀNG</b>\n` +
+                            `• <b>Ca:</b> ${shiftReport.shiftName}\n` +
+                            `• <b>Thu ngân:</b> ${shiftReport.cashier}\n` +
+                            `• <b>Tiền quỹ đầu ca:</b> ${(shiftReport.initialCash || 0).toLocaleString()}đ\n` +
+                            `• <b>Doanh thu tiền mặt:</b> ${stats.cashIncome.toLocaleString()}đ\n` +
+                            `• <b>Doanh thu chuyển khoản:</b> ${stats.bankIncome.toLocaleString()}đ\n` +
+                            `• <b>Lý thuyết két:</b> ${stats.systemExpectedCash.toLocaleString()}đ\n` +
+                            `• <b>Thực nộp két:</b> <b>${actualCash.toLocaleString()}đ</b>\n` +
+                            `• <b>Chênh lệch két:</b> <b>${diffSign}${diff.toLocaleString()}đ</b>\n` +
+                            `• <b>Tổng số đơn:</b> ${stats.ordersCount} đơn`;
+            this.sendTelegramNotification(teleMsg, 'shift');
+
+            // 3. Xóa ca đang mở trên Firebase
             if (this.currentUser) {
                 db.ref('currentShifts/' + this.currentUser.username).remove();
             }
@@ -413,112 +600,10 @@ function cafeApp() {
             this.showCloseShiftModal = false;
         },
 
-        // ================= LỊCH SỬ ĐƠN HÀNG: CHỈ HIỂN THỊ ĐÚNG TRONG CA =================
-        get filteredOrdersList() {
-            if (this.hasPermission(['Quản lý'])) {
-                return [...this.ordersList].reverse();
-            }
-
-            if (!this.currentShift) {
-                return [];
-            }
-
-            const shiftStart = new Date(this.currentShift.startTime).getTime();
-            return this.ordersList.filter(o => {
-                if (!o.timestamp) return false;
-                const orderTime = new Date(o.timestamp).getTime();
-                const isMyOrder = (o.cashier === this.currentShift.cashier) || 
-                                  (o.cashierUsername === this.currentShift.username);
-                return orderTime >= shiftStart && isMyOrder;
-            }).reverse();
-        },
-
-        // ================= QUẢN LÝ SỔ QUỸ =================
-        openCashFlowModal(type = 'CHI') {
-            this.isEditingCashFlow = false;
-            this.cashFlowForm = {
-                id: null,
-                type: type,
-                category: type === 'CHI' ? this.expenseCategories[0] : this.incomeCategories[0],
-                amount: 50000,
-                recipient: '',
-                note: ''
-            };
-            this.showCashFlowModal = true;
-        },
-
-        openEditCashFlowModal(flow) {
-            this.isEditingCashFlow = true;
-            this.cashFlowForm = {
-                id: flow.id,
-                type: flow.type || 'CHI',
-                category: flow.category || this.expenseCategories[0],
-                amount: Number(flow.amount || 0),
-                recipient: flow.recipient || '',
-                note: flow.note || '',
-                timestamp: flow.timestamp
-            };
-            this.showCashFlowModal = true;
-        },
-
-        saveCashFlow() {
-            const form = this.cashFlowForm;
-            if (!form.amount || Number(form.amount) <= 0) {
-                alert('Vui lòng nhập số tiền hợp lệ (> 0)!');
-                return;
-            }
-
-            const payload = {
-                type: form.type,
-                category: form.category,
-                amount: Number(form.amount),
-                recipient: (form.recipient || '').trim(),
-                note: (form.note || '').trim(),
-                creator: this.currentUser ? this.currentUser.name : 'Quản lý',
-                timestamp: this.isEditingCashFlow && form.timestamp ? form.timestamp : new Date().toISOString()
-            };
-
-            if (this.isEditingCashFlow && form.id) {
-                db.ref('cashFlow/' + form.id).update(payload).then(() => {
-                    alert('Đã cập nhật lại phiếu thu/chi thành công!');
-                    this.showCashFlowModal = false;
-                }).catch(err => alert('Lỗi: ' + err.message));
-            } else {
-                db.ref('cashFlow').push(payload).then(() => {
-                    alert(`Đã lưu phiếu ${payload.type === 'THU' ? 'thu' : 'chi'} thành công!`);
-                    this.showCashFlowModal = false;
-                }).catch(err => alert('Lỗi: ' + err.message));
-            }
-        },
-
-        deleteCashFlow(id) {
-            if (confirm('Bạn có chắc chắn muốn xóa phiếu thu/chi này khỏi sổ quỹ?')) {
-                db.ref('cashFlow/' + id).remove().then(() => {
-                    alert('Đã xóa phiếu thành công!');
-                }).catch(err => alert('Lỗi: ' + err.message));
-            }
-        },
-
-        get filteredCashFlowList() {
-            return [...this.cashFlowList].reverse();
-        },
-
-        get totalAutoPosIncome() {
-            return this.ordersList.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-        },
-
-        get totalManualIncome() {
-            return this.cashFlowList.filter(c => c.type === 'THU').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-        },
-
-        get totalExpenses() {
-            return this.cashFlowList.filter(c => c.type === 'CHI').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-        },
-
         // ================= QUẢN LÝ THỰC ĐƠN =================
         openMenuModal() {
             this.isEditingMenu = false;
-            this.menuForm = { id: null, name: '', price: 20000, category: 'Bánh kẹp mặn', image: '' };
+            this.menuForm = { id: null, name: '', price: 20000, category: 'Bánh mặn', image: '' };
             this.showMenuModal = true;
         },
 
@@ -528,7 +613,7 @@ function cafeApp() {
                 id: m.id,
                 name: m.name || '',
                 price: Number(m.price || 0),
-                category: m.category || 'Bánh kẹp mặn',
+                category: m.category || 'Bánh mặn',
                 image: m.image || ''
             };
             this.showMenuModal = true;
@@ -543,7 +628,7 @@ function cafeApp() {
             const payload = {
                 name: this.menuForm.name.trim(),
                 price: Number(this.menuForm.price) || 0,
-                category: this.menuForm.category || 'Bánh kẹp mặn',
+                category: this.menuForm.category || 'Bánh mặn',
                 image: (this.menuForm.image || '').trim()
             };
 
@@ -657,6 +742,31 @@ function cafeApp() {
             return items;
         },
 
+        // ================= HÀM GỬI THÔNG BÁO VỀ TELEGRAM (CHỐNG LỖI CORS) =================
+        sendTelegramNotification(message, notifyType = 'order') {
+            db.ref('botSettings').once('value', snap => {
+                const cfg = snap.val();
+                if (!cfg || !cfg.telegramToken || !cfg.telegramChatId) return;
+
+                if (notifyType === 'order' && cfg.notifyOnOrder === false) return;
+                if (notifyType === 'shift' && cfg.notifyOnShiftClose === false) return;
+
+                const token = String(cfg.telegramToken).trim();
+                const chatId = String(cfg.telegramChatId).trim();
+
+                const formData = new FormData();
+                formData.append('chat_id', chatId);
+                formData.append('text', message);
+                formData.append('parse_mode', 'HTML');
+
+                fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors'
+                }).catch(err => console.log('Lỗi gửi Telegram:', err));
+            });
+        },
+
         // ================= THAO TÁC KẸP BÁNH LẺ & GỘP =================
         handleSlotClick(slot) {
             if (!this.ensureShiftOpened()) return;
@@ -728,7 +838,7 @@ function cafeApp() {
             this.currentTab = 'tables';
         },
 
-        // ================= THANH TOÁN =================
+        // ================= THANH TOÁN ĐƠN LẺ =================
         openPaymentModal() {
             if (!this.ensureShiftOpened()) return;
             if (!this.selectedTable || this.currentOrder.items.length === 0) {
@@ -760,9 +870,19 @@ function cafeApp() {
                 timestamp: new Date().toISOString()
             };
 
+            // 1. Lưu hóa đơn vào Firebase
             newOrderRef.set(orderData);
             db.ref('tables/' + this.selectedTable.id).update({ status: 'empty' });
             db.ref('tableOrders/' + this.selectedTable.id).remove();
+
+            // 2. Gửi thông báo đơn hàng mới đến Telegram
+            const itemsSummary = (orderData.items || []).map(it => `${it.qty}x ${it.name}`).join(', ');
+            const teleMsg = `🍞 <b>ĐƠN HÀNG MỚI</b>\n` +
+                            `• <b>Vị trí:</b> ${orderData.table}\n` +
+                            `• <b>Món:</b> ${itemsSummary}\n` +
+                            `• <b>Tổng tiền:</b> <b>${orderData.total.toLocaleString()}đ</b> (${orderData.paymentMethod})\n` +
+                            `• <b>Thu ngân:</b> ${orderData.cashier}`;
+            this.sendTelegramNotification(teleMsg, 'order');
 
             this.showPaymentModal = false;
             this.selectedTable = null;
@@ -826,12 +946,22 @@ function cafeApp() {
                 timestamp: new Date().toISOString()
             };
 
+            // 1. Lưu đơn gộp vào Firebase
             newOrderRef.set(orderData);
 
+            // 2. Làm trống các kẹp đã thanh toán
             this.selectedSlotsForCheckout.forEach(slotId => {
                 db.ref('tables/' + slotId).update({ status: 'empty' });
                 db.ref('tableOrders/' + slotId).remove();
             });
+
+            // 3. Gửi thông báo đơn gộp đến Telegram
+            const itemsSummary = (orderData.items || []).map(it => `${it.qty}x ${it.name}`).join(', ');
+            const teleMsg = `🍞 <b>ĐƠN GỘP MỚI (${this.selectedSlotsForCheckout.length} VỊ TRÍ)</b>\n` +
+                            `• <b>Món:</b> ${itemsSummary}\n` +
+                            `• <b>Tổng tiền:</b> <b>${orderData.total.toLocaleString()}đ</b> (${orderData.paymentMethod})\n` +
+                            `• <b>Thu ngân:</b> ${orderData.cashier}`;
+            this.sendTelegramNotification(teleMsg, 'order');
 
             this.selectedSlotsForCheckout = [];
             this.isMultiCheckoutMode = false;
