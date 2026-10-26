@@ -421,7 +421,7 @@
         </div>
 
         <!-- ================= TAB 4: SỔ QUỸ THU CHI (QUẢN LÝ) ================= -->
-        <div x-show="currentTab === 'cashflow' && hasPermission(['Quản lý'])" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-24">
+        <div x-show="currentTab === 'cashflow' && hasPermission(['Quản lý'])" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-28">
             <div class="flex justify-between items-center border-b pb-2">
                 <div>
                     <h2 class="font-black text-sm text-slate-800">Sổ Quỹ Thu Chi</h2>
@@ -429,10 +429,30 @@
                 </div>
                 <div class="flex gap-1.5">
                     <button type="button" @click="openCashFlowModal('THU')" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs">
-                        <i class="fa-solid fa-plus text-[10px]"></i>Thu
+                        <i class="fa-solid fa-plus text-[10px]"></i> Thu
                     </button>
                     <button type="button" @click="openCashFlowModal('CHI')" class="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs">
-                        <i class="fa-solid fa-minus text-[10px]"></i>Chi
+                        <i class="fa-solid fa-minus text-[10px]"></i> Chi
+                    </button>
+                </div>
+            </div>
+
+            <!-- BỘ LỌC TỪ NGÀY - ĐẾN NGÀY & NÚT XÓA HẾT -->
+            <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold mb-0.5">Từ ngày:</label>
+                        <input type="date" x-model="cashFlowStartDate" class="w-full p-1.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold mb-0.5">Đến ngày:</label>
+                        <input type="date" x-model="cashFlowEndDate" class="w-full p-1.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold">
+                    </div>
+                </div>
+                <div class="flex justify-between items-center pt-1 border-t border-slate-200/80">
+                    <span class="text-[10px] text-slate-500 font-bold" x-text="'Đang lọc: ' + filteredCashFlowList.length + ' phiếu'"></span>
+                    <button type="button" @click="deleteAllFilteredCashFlow()" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-rose-300">
+                        <i class="fa-solid fa-trash-can text-[10px]"></i> Xóa hết theo bộ lọc
                     </button>
                 </div>
             </div>
@@ -450,7 +470,7 @@
 
             <div class="space-y-2">
                 <template x-if="filteredCashFlowList.length === 0">
-                    <p class="text-center text-xs text-slate-400 py-6 italic">Chưa có giao dịch thu chi nào.</p>
+                    <p class="text-center text-xs text-slate-400 py-6 italic">Không có phiếu thu chi nào trong khoảng ngày này.</p>
                 </template>
                 <template x-for="flow in filteredCashFlowList" :key="flow.id">
                     <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50 flex items-center justify-between text-xs space-x-2">
@@ -469,6 +489,7 @@
                             <span class="font-black text-xs" :class="flow.type === 'THU' ? 'text-emerald-600' : 'text-rose-600'" 
                                   x-text="(flow.type === 'THU' ? '+' : '-') + Number(flow.amount || 0).toLocaleString() + 'đ'"></span>
                             
+                            <!-- NÚT SỬA & XÓA TỪNG PHIẾU -->
                             <div class="flex items-center gap-1">
                                 <button type="button" 
                                         @click.stop.prevent="openEditCashFlowModal(flow)" 
@@ -479,7 +500,7 @@
                                 <button type="button" 
                                         @click.stop.prevent="deleteCashFlow(flow.id)" 
                                         class="w-7 h-7 flex items-center justify-center text-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs"
-                                        title="Xóa phiếu">
+                                        title="Xóa phiếu này">
                                     <i class="fa-solid fa-trash text-[10px]"></i>
                                 </button>
                             </div>
@@ -489,19 +510,42 @@
             </div>
         </div>
 
-        <!-- ================= TAB 5: LỊCH SỬ HÓA ĐƠN ================= -->
-        <div x-show="currentTab === 'history_orders'" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-24">
+       <!-- ================= TAB 5: LỊCH SỬ HÓA ĐƠN ================= -->
+        <div x-show="currentTab === 'history_orders'" class="h-full bg-white p-3 overflow-y-auto space-y-3 mobile-scroll pb-28">
             <div class="flex justify-between items-center border-b pb-2">
                 <div>
                     <h2 class="font-black text-sm text-slate-800" 
-                        x-text="hasPermission(['Quản lý']) ? 'Toàn Bộ Lịch Sử Bán Hàng' : ('Lịch Sử: ' + (currentShift ? currentShift.shiftName : 'Chưa mở ca'))"></h2>
+                        x-text="hasPermission(['Quản lý']) ? 'Lịch Sử Bán Hàng (Quản Lý)' : ('Lịch Sử: ' + (currentShift ? currentShift.shiftName : 'Chưa mở ca'))"></h2>
                     <p class="text-[10px] text-slate-400" 
-                       x-text="hasPermission(['Quản lý']) ? 'Chế độ xem toàn hệ thống' : ('Thu ngân: ' + (currentUser ? currentUser.name : ''))"></p>
+                       x-text="hasPermission(['Quản lý']) ? 'Xem và đối soát theo khoảng ngày' : ('Thu ngân: ' + (currentUser ? currentUser.name : ''))"></p>
                 </div>
                 <span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200" 
                       x-text="'Tổng: ' + filteredOrdersList.length + ' đơn'"></span>
             </div>
 
+            <!-- BỘ LỌC TỪ NGÀY - ĐẾN NGÀY VÀ NÚT XÓA HẾT (CHỈ QUẢN LÝ THẤY) -->
+            <template x-if="hasPermission(['Quản lý'])">
+                <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-500 font-bold mb-0.5">Từ ngày:</label>
+                            <input type="date" x-model="orderHistoryStartDate" class="w-full p-1.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 font-bold mb-0.5">Đến ngày:</label>
+                            <input type="date" x-model="orderHistoryEndDate" class="w-full p-1.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold">
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center pt-1 border-t border-slate-200/80">
+                        <span class="text-[10px] text-slate-500 font-bold" x-text="'Tìm thấy: ' + filteredOrdersList.length + ' đơn'"></span>
+                        <button type="button" @click="deleteAllFilteredOrders()" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-lg text-[11px] font-bold flex items-center gap-1 border border-rose-300">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i> Xóa hết theo bộ lọc
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Khi nhân viên chưa mở ca -->
             <template x-if="!hasPermission(['Quản lý']) && !currentShift">
                 <div class="text-center py-10 px-4 bg-slate-50 border border-dashed rounded-2xl space-y-2">
                     <i class="fa-solid fa-lock text-slate-300 text-3xl"></i>
@@ -513,20 +557,34 @@
                 </div>
             </template>
 
+            <!-- Khi danh sách rỗng -->
             <template x-if="(hasPermission(['Quản lý']) || currentShift) && filteredOrdersList.length === 0">
                 <div class="text-center py-10 text-xs text-slate-400 italic">
-                    Chưa có đơn hàng nào phát sinh trong ca làm việc này.
+                    Không có đơn hàng nào trong khoảng thời gian này.
                 </div>
             </template>
 
+            <!-- Danh sách đơn hàng kèm nút xóa từng đơn (Quản lý) -->
             <div class="space-y-2">
                 <template x-for="order in filteredOrdersList" :key="order.id">
-                    <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50 flex justify-between items-center">
+                    <div class="p-2.5 border border-slate-200 rounded-xl bg-slate-50 flex items-center justify-between">
                         <div>
                             <p class="font-bold text-xs text-slate-800" x-text="order.table + ' (' + (order.paymentMethod || 'Tiền mặt') + ')'"></p>
-                            <p class="text-[10px] text-slate-400" x-text="new Date(order.timestamp).toLocaleTimeString('vi-VN') + ' | ' + (order.cashier || 'Thu ngân')"></p>
+                            <p class="text-[10px] text-slate-400" x-text="new Date(order.timestamp).toLocaleString('vi-VN') + ' | ' + (order.cashier || 'Thu ngân')"></p>
                         </div>
-                        <span class="font-black text-xs text-emerald-700" x-text="Number(order.total || 0).toLocaleString() + 'đ'"></span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-xs text-emerald-700" x-text="Number(order.total || 0).toLocaleString() + 'đ'"></span>
+                            
+                            <!-- NÚT XÓA TỪNG ĐƠN HÀNG (CHỈ QUẢN LÝ MỚI THẤY) -->
+                            <template x-if="hasPermission(['Quản lý'])">
+                                <button type="button" 
+                                        @click.stop.prevent="deleteOrder(order.id)" 
+                                        class="w-7 h-7 flex items-center justify-center text-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs"
+                                        title="Xóa đơn hàng này">
+                                    <i class="fa-solid fa-trash text-[10px]"></i>
+                                </button>
+                            </template>
+                        </div>
                     </div>
                 </template>
             </div>
