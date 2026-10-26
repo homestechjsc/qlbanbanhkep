@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Trang Quản Trị & Kho Hàng - HomesTech POS</title>
-    <!-- Cấu hình PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0072bc">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bánh Kẹp POS">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3978/3978759.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
 
-    <!-- Đăng ký Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -22,14 +20,10 @@
             });
         }
     </script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
@@ -49,7 +43,7 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-800" x-data="adminApp()">
 
-    <!-- 1. HEADER DI ĐỘNG (Đã đệm Safe Area tránh tai thỏ) -->
+    <!-- 1. HEADER DI ĐỘNG -->
     <header style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(48px + env(safe-area-inset-top, 0px));" 
             class="bg-[#0072bc] text-white px-3 py-1 flex items-center justify-between shadow flex-shrink-0 z-20 select-none">
         <div class="flex items-center gap-2">
@@ -68,13 +62,11 @@
         </div>
     </header>
 
-    <!-- 2. NỘI DUNG CHÍNH (Đã cộng khoảng cách Safe Area của iPhone) -->
+    <!-- 2. NỘI DUNG CHÍNH -->
     <main style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);" class="flex-1 overflow-y-auto mobile-scroll p-3 pb-24">
 
-        <!-- ================= TAB 1: BÁO CÁO DOANH THU, NHÂN VIÊN & CA ================= -->
+        <!-- ================= TAB 1: BÁO CÁO DOANH THU ================= -->
         <div x-show="currentTab === 'reports'" class="space-y-3">
-            
-            <!-- Menu chọn nhánh con Báo Cáo -->
             <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold gap-1">
                 <button @click="reportSubTab = 'overview'" :class="reportSubTab === 'overview' ? 'bg-white text-[#0072bc] shadow-sm' : 'text-slate-600'" class="flex-1 py-1.5 rounded-lg transition">
                     Tổng Quan
@@ -87,7 +79,6 @@
                 </button>
             </div>
 
-            <!-- Bộ lọc thời gian dùng chung -->
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2">
                 <div class="flex justify-between items-center">
                     <span class="text-xs font-black text-slate-700 uppercase">Khoảng Thời Gian:</span>
@@ -186,7 +177,7 @@
                 </div>
             </div>
 
-            <!-- 1.2 BÁO CÁO THEO NHÂN VIÊN (DOANH SỐ TỪNG THU NGÂN) -->
+            <!-- 1.2 BÁO CÁO THEO NHÂN VIÊN -->
             <div x-show="reportSubTab === 'staff'" class="space-y-2">
                 <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 class="font-black text-xs text-slate-700 uppercase border-b pb-1.5 flex items-center gap-1.5">
@@ -214,7 +205,7 @@
                 </div>
             </div>
 
-            <!-- 1.3 BÁO CÁO THEO CA LÀM VIỆC (ĐỐI SOÁT TIỀN KÉT & LỆCH KÉT) -->
+            <!-- 1.3 BÁO CÁO THEO CA LÀM VIỆC -->
             <div x-show="reportSubTab === 'shifts'" class="space-y-2">
                 <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 class="font-black text-xs text-slate-700 uppercase border-b pb-1.5 flex items-center gap-1.5">
@@ -251,12 +242,10 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
         <!-- ================= TAB 2: QUẢN LÝ NHẬP KHO & CÔNG NỢ ================= -->
         <div x-show="currentTab === 'inventory'" class="space-y-3">
-            
             <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold gap-1">
                 <button @click="invSubTab = 'stock'" :class="invSubTab === 'stock' ? 'bg-white text-[#0072bc] shadow-sm' : 'text-slate-600'" class="flex-1 py-1.5 rounded-lg transition">
                     <i class="fa-solid fa-boxes-stacked"></i> Tồn Kho
@@ -269,16 +258,19 @@
                 </button>
             </div>
 
-            <!-- PHẦN 1: TỒN KHO NGUYÊN VẬT LIỆU (CÓ NÚT XÓA) -->
+            <!-- TỒN KHO NGUYÊN VẬT LIỆU -->
             <div x-show="invSubTab === 'stock'" class="space-y-2">
                 <div class="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
                     <span class="text-xs font-black text-slate-700 uppercase">Tồn Kho Nguyên Liệu</span>
                     <button @click="openAddNewNVLModal()" class="px-2.5 py-1 bg-[#0072bc] text-white rounded-lg text-xs font-bold shadow flex items-center gap-1">
-                        <i class="fa-solid fa-plus"></i>Thêm NVL
+                        <i class="fa-solid fa-plus"></i> Thêm NVL
                     </button>
                 </div>
 
                 <div class="space-y-1.5">
+                    <template x-if="inventoryList.length === 0">
+                        <p class="text-center text-xs text-slate-400 py-6 italic">Kho hiện đang trống. Hãy bấm thêm nguyên liệu mới.</p>
+                    </template>
                     <template x-for="item in inventoryList" :key="item.id">
                         <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs text-xs">
                             <div>
@@ -287,11 +279,9 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="font-black text-sm" :class="Number(item.stock) <= 5 ? 'text-rose-600' : 'text-slate-800'" x-text="item.stock + ' ' + item.unit"></span>
-                                <!-- Nút SỬA TỒN KHO -->
                                 <button type="button" @click="editStock(item)" class="w-7 h-7 flex items-center justify-center bg-blue-50 border border-blue-200 text-[#0072bc] rounded-lg active:scale-90 transition shadow-xs" title="Sửa số lượng tồn">
                                     <i class="fa-solid fa-pen-to-square text-xs"></i>
                                 </button>
-                                <!-- NÚT XÓA NGUYÊN VẬT LIỆU MỚI BỔ SUNG -->
                                 <button type="button" @click="deleteNVL(item.id, item.name)" class="w-7 h-7 flex items-center justify-center bg-rose-50 border border-rose-200 text-rose-600 rounded-lg active:scale-90 transition shadow-xs" title="Xóa nguyên liệu này">
                                     <i class="fa-solid fa-trash text-xs"></i>
                                 </button>
@@ -301,7 +291,7 @@
                 </div>
             </div>
 
-            <!-- PHẦN 2: DANH SÁCH PHIẾU NHẬP -->
+            <!-- PHIẾU NHẬP -->
             <div x-show="invSubTab === 'receipts'" class="space-y-2">
                 <div class="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
                     <span class="text-xs font-black text-slate-700 uppercase">Danh Sách Phiếu Nhập</span>
@@ -339,7 +329,6 @@
 
                             <div class="flex justify-between items-center text-[10px] text-slate-400 pt-1 border-t border-slate-100">
                                 <span x-text="new Date(receipt.timestamp).toLocaleString('vi-VN')"></span>
-                                
                                 <div class="flex gap-2">
                                     <button @click="openEditImportModal(receipt)" class="px-2 py-1 bg-blue-50 text-[#0072bc] rounded-md font-bold flex items-center gap-1">
                                         <i class="fa-solid fa-pen text-[10px]"></i> Sửa
@@ -354,7 +343,7 @@
                 </div>
             </div>
 
-            <!-- PHẦN 3: QUẢN LÝ CÔNG NỢ NHÀ CUNG CẤP -->
+            <!-- CÔNG NỢ -->
             <div x-show="invSubTab === 'debt'" class="space-y-2">
                 <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-1">
                     <div class="flex justify-between items-center">
@@ -390,7 +379,6 @@
                     </template>
                 </div>
             </div>
-
         </div>
 
         <!-- ================= TAB 3: QUẢN LÝ NHÂN VIÊN ================= -->
@@ -398,10 +386,10 @@
             <div class="flex justify-between items-center bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
                 <div>
                     <h2 class="font-black text-sm text-slate-800">Quản Lý Nhân Sự</h2>
-                    <p class="text-[10px] text-slate-400">Tài khoản 2 nhân viên bán hàng & mã PIN</p>
+                    <p class="text-[10px] text-slate-400">Tài khoản nhân viên bán hàng & mã PIN</p>
                 </div>
                 <button @click="openStaffModal()" class="px-3 py-1.5 bg-[#0072bc] text-white rounded-xl text-xs font-bold shadow flex items-center gap-1">
-                    <i class="fa-solid fa-user-plus"></i> + Thêm Nhân Viên
+                    <i class="fa-solid fa-user-plus"></i> Thêm Nhân Viên
                 </button>
             </div>
 
@@ -468,19 +456,46 @@
                 </button>
             </div>
 
-            <!-- Cấu hình Zalo Webhook / OA -->
+            <!-- Cấu hình Zalo Bot Platform (Đọc trực tiếp getUpdates tự động bắt Chat ID) -->
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
                 <h3 class="font-black text-xs text-blue-700 uppercase flex items-center gap-1.5 border-b pb-1.5">
-                    <i class="fa-solid fa-message text-base"></i> Cấu hình Zalo Bot / Webhook
+                    <i class="fa-solid fa-message text-base"></i> Cấu hình Zalo Bot Cá Nhân
                 </h3>
                 
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Zalo Webhook URL / Endpoint (*)</label>
-                    <input type="url" x-model="botSettings.zaloWebhookUrl" placeholder="https://webhook.site/... hoặc API Zalo OA" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono">
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Zalo Bot Token (*)</label>
+                    <input type="text" x-model="botSettings.zaloBotToken" placeholder="Dán Bot Token vào đây..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono">
                 </div>
 
-                <button type="button" @click="testZaloWebhook()" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs">
-                    <i class="fa-solid fa-vial"></i> Gửi Thử Webhook Đến Zalo
+                <!-- KHỐI QUÉT CHAT ID TỰ ĐỘNG QUA GETUPDATES -->
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <strong class="text-xs text-blue-900 font-black">LẤY CHAT ID TỰ ĐỘNG TỪ ZALO</strong>
+                        <template x-if="isScanning">
+                            <span class="text-[10px] text-blue-600 font-bold bg-white px-2 py-0.5 rounded border border-blue-200">
+                                Đang quét (<span x-text="pairCountDown"></span>s)
+                            </span>
+                        </template>
+                    </div>
+
+                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                        1. Mở ứng dụng Zalo, nhắn bất kỳ tin nhắn nào (ví dụ: <code class="bg-white px-1.5 py-0.5 rounded font-black text-blue-700 border">Xin chao</code>) cho Bot.<br>
+                        2. Nhấn nút bên dưới, hệ thống sẽ tự động bắt lấy Chat ID của bạn.
+                    </p>
+
+                    <button type="button" @click="fetchZaloChatIdDirectly()" :disabled="isScanning" class="w-full py-2.5 bg-[#0072bc] hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-arrows-rotate" :class="isScanning ? 'fa-spin' : ''"></i>
+                        <span x-text="isScanning ? 'Đang kiểm tra tin nhắn mới từ Zalo...' : 'Bấm Để Tự Động Quét & Lấy Chat ID'"></span>
+                    </button>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">Chat ID Zalo đã nhận (*)</label>
+                    <input type="text" x-model="botSettings.zaloChatId" placeholder="Mã Chat ID sẽ tự động điền vào đây..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold text-blue-700">
+                </div>
+
+                <button type="button" @click="testZaloBot()" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition">
+                    <i class="fa-solid fa-paper-plane"></i> Gửi Thử Tin Nhắn Đến Zalo
                 </button>
             </div>
 
@@ -492,7 +507,7 @@
 
     </main>
 
-    <!-- 3. BOTTOM NAVIGATION BAR (Đã bổ sung tab Cài Đặt Bot) -->
+    <!-- 3. BOTTOM NAVIGATION BAR -->
     <nav style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);" 
          class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around z-30 select-none shadow-lg pt-1.5">
         <button @click="currentTab = 'reports'" :class="currentTab === 'reports' ? 'text-[#0072bc] font-black' : 'text-slate-400'" class="flex flex-col items-center justify-center flex-1 py-1">
@@ -515,8 +530,6 @@
             <span class="text-xs font-bold mt-0.5">Cài đặt Bot</span>
         </button>
     </nav>
-
-    <!-- ==================== CÁC MODAL HỆ THỐNG ==================== -->
 
     <!-- MODAL LẬP / SỬA PHIẾU NHẬP -->
     <div x-show="showImportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3" style="display: none;">
@@ -680,7 +693,7 @@
         </div>
     </div>
 
-    <!-- JS XỬ LÝ TOÀN BỘ LOGIC QUẢN TRỊ & BOT NOTIFICATION -->
+    <!-- JS XỬ LÝ TOÀN BỘ LOGIC -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCLOMjeC-gBOcB_z8916Q3v6TeKUa4mqQI",
@@ -700,12 +713,12 @@
 
         function adminApp() {
             return {
-                currentTab: 'reports',   // 'reports' | 'inventory' | 'staff' | 'settings'
-                reportSubTab: 'overview',// 'overview' | 'staff' | 'shifts'
-                invSubTab: 'stock',      // 'stock' | 'receipts' | 'debt'
+                currentTab: 'reports',   
+                reportSubTab: 'overview',
+                invSubTab: 'stock',      
                 timeFilter: 'today',
-                startDate: new Date().toISOString().slice(0, 10),
-                endDate: new Date().toISOString().slice(0, 10),
+                startDate: new Date().toLocaleDateString('en-CA'),
+                endDate: new Date().toLocaleDateString('en-CA'),
 
                 ordersList: [],
                 staffList: [],
@@ -714,13 +727,117 @@
                 shiftsHistory: [],
                 cashFlowList: [],
 
-                // Cài đặt Bot Telegram & Zalo
                 botSettings: {
                     telegramToken: '',
                     telegramChatId: '',
-                    zaloWebhookUrl: '',
+                    zaloBotToken: '1152271286228236477:EICdxWEANyapBxWZNEiAVaLMbmvYiYQvDGFXUNVsJfsvb1rlQBREuXAbjxXfzvEs',
+                    zaloChatId: '',
                     notifyOnOrder: true,
                     notifyOnShiftClose: true
+                },
+
+                isScanning: false,
+                pairCountDown: 15,
+                scanTimer: null,
+
+                // TỰ ĐỘNG BẮT CHAT ID QUA API GETUPDATES CỦA ZALO BOT
+                fetchZaloChatIdDirectly() {
+                    const token = (this.botSettings.zaloBotToken || '').trim();
+                    if (!token) {
+                        alert('Vui lòng nhập Zalo Bot Token trước!');
+                        return;
+                    }
+
+                    this.isScanning = true;
+                    this.pairCountDown = 15;
+
+                    const scanOnce = () => {
+                        const url = `https://bot-api.zaloplatforms.com/bot${token}/getUpdates`;
+                        fetch(url)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data && data.result && data.result.length > 0) {
+                                    // Lấy tin nhắn mới nhất
+                                    const latestUpdate = data.result[data.result.length - 1];
+                                    const chatId = latestUpdate.message?.chat?.id || latestUpdate.message?.from?.id;
+
+                                    if (chatId) {
+                                        this.botSettings.zaloChatId = String(chatId);
+                                        clearInterval(this.scanTimer);
+                                        this.isScanning = false;
+
+                                        // Lưu ngay vào Firebase
+                                        db.ref('botSettings').update({
+                                            zaloBotToken: token,
+                                            zaloChatId: String(chatId)
+                                        });
+
+                                        alert(`🎉 ĐÃ BẮT ĐƯỢC CHAT ID ZALO THÀNH CÔNG:\n${chatId}`);
+                                        return;
+                                    }
+                                }
+                            })
+                            .catch(err => console.log('Đang quét getUpdates...', err));
+                    };
+
+                    // Quét ngay lần đầu
+                    scanOnce();
+
+                    // Quét lặp lại mỗi 2 giây
+                    clearInterval(this.scanTimer);
+                    this.scanTimer = setInterval(() => {
+                        this.pairCountDown -= 2;
+                        scanOnce();
+
+                        if (this.pairCountDown <= 0) {
+                            clearInterval(this.scanTimer);
+                            this.isScanning = false;
+                            if (!this.botSettings.zaloChatId) {
+                                alert('⚠️ Chưa thấy tin nhắn mới!\nBạn hãy mở Zalo, nhắn 1 tin nhắn bất kỳ cho Bot rồi bấm quét lại nhé.');
+                            }
+                        }
+                    }, 2000);
+                },
+
+                // GỬI TIN NHẮN TRỰC TIẾP QUA API CHÍNH THỨC CỦA ZALO BOT
+                testZaloBot() {
+                    const token = (this.botSettings.zaloBotToken || '').trim();
+                    const chatId = (this.botSettings.zaloChatId || '').trim();
+
+                    if (!token || !chatId) {
+                        alert('Chưa có Bot Token hoặc Chat ID! Hãy bấm nút lấy Chat ID phía trên trước.');
+                        return;
+                    }
+
+                    db.ref('botSettings').update({
+                        zaloBotToken: token,
+                        zaloChatId: chatId
+                    });
+
+                    const msg = `🔔 [BÁNH CÁ POS - TEST]\n✅ Bot Zalo kết nối thành công lúc ${new Date().toLocaleTimeString('vi-VN')}!\nDoanh thu hôm nay: ${this.reportStats.revenue.toLocaleString()}đ.`;
+
+                    // Endpoint chính thức của Zalo Bot Platform
+                    const targetUrl = `https://bot-api.zaloplatforms.com/bot${token}/sendMessage`;
+
+                    const payload = {
+                        chat_id: chatId,
+                        text: msg
+                    };
+
+                    fetch(targetUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload),
+                        mode: 'no-cors'
+                    })
+                    .then(() => {
+                        alert('🎉 Đã phát lệnh gửi tin nhắn đến Zalo Bot thành công!\nHãy mở Zalo kiểm tra tin nhắn.');
+                    })
+                    .catch(err => {
+                        alert(`❌ Gửi thất bại: ${err.message}`);
+                    });
                 },
 
                 // Quản lý Nhân viên
@@ -760,14 +877,7 @@
                         if (d) {
                             this.inventoryList = Object.keys(d).map(k => ({ id: k, ...d[k] }));
                         } else {
-                            const defaultNVL = [
-                                { name: 'Bột pha sẵn', stock: 15, unit: 'kg' },
-                                { name: 'Pate gan đặc biệt', stock: 5, unit: 'hộp' },
-                                { name: 'Chà bông gà cay', stock: 8, unit: 'kg' },
-                                { name: 'Phô mai lát Cheddar', stock: 10, unit: 'gói' },
-                                { name: 'Trứng gà tươi', stock: 60, unit: 'quả' }
-                            ];
-                            defaultNVL.forEach(item => db.ref('inventoryNVL').push(item));
+                            this.inventoryList = [];
                         }
                     });
 
@@ -792,11 +902,12 @@
                     // 7. Cấu hình Bot Telegram / Zalo
                     db.ref('botSettings').on('value', snap => {
                         const d = snap.val();
-                        if (d) this.botSettings = { ...this.botSettings, ...d };
+                        if (d) {
+                            this.botSettings = { ...this.botSettings, ...d };
+                        }
                     });
                 },
 
-                // ================= NGUYÊN VẬT LIỆU: BỔ SUNG NÚT XÓA =================
                 deleteNVL(id, name) {
                     if (confirm(`Bạn có chắc chắn muốn xóa nguyên liệu "${name}" khỏi kho?`)) {
                         db.ref('inventoryNVL/' + id).remove().then(() => {
@@ -827,32 +938,39 @@
                     }
                 },
 
-                // ================= BÁO CÁO THEO NHÂN VIÊN & CA =================
                 setTimeFilter(type) {
                     this.timeFilter = type;
                     const now = new Date();
                     if (type === 'today') {
-                        this.startDate = now.toISOString().slice(0, 10);
-                        this.endDate = now.toISOString().slice(0, 10);
+                        this.startDate = now.toLocaleDateString('en-CA');
+                        this.endDate = now.toLocaleDateString('en-CA');
                     } else if (type === 'week') {
                         const past = new Date();
                         past.setDate(now.getDate() - 7);
-                        this.startDate = past.toISOString().slice(0, 10);
-                        this.endDate = now.toISOString().slice(0, 10);
+                        this.startDate = past.toLocaleDateString('en-CA');
+                        this.endDate = now.toLocaleDateString('en-CA');
                     } else if (type === 'month') {
                         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-                        this.startDate = firstDay.toISOString().slice(0, 10);
-                        this.endDate = now.toISOString().slice(0, 10);
+                        this.startDate = firstDay.toLocaleDateString('en-CA');
+                        this.endDate = now.toLocaleDateString('en-CA');
                     }
                 },
 
+                formatDateToLocalYMD(timestamp) {
+                    if (!timestamp) return '';
+                    const d = new Date(timestamp);
+                    if (isNaN(d.getTime())) return '';
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                },
+
                 get filteredOrders() {
-                    const start = new Date(this.startDate + 'T00:00:00').getTime();
-                    const end = new Date(this.endDate + 'T23:59:59').getTime();
                     return this.ordersList.filter(o => {
-                        if (!o.timestamp) return false;
-                        const t = new Date(o.timestamp).getTime();
-                        return t >= start && t <= end;
+                        const orderDate = this.formatDateToLocalYMD(o.timestamp);
+                        if (!orderDate) return false;
+                        return orderDate >= this.startDate && orderDate <= this.endDate;
                     });
                 },
 
@@ -878,7 +996,6 @@
                     };
                 },
 
-                // Thống kê chi tiết theo từng bạn nhân viên
                 get staffPerformanceStats() {
                     const map = {};
                     this.filteredOrders.forEach(o => {
@@ -899,14 +1016,11 @@
                     return Object.values(map).sort((a, b) => b.revenue - a.revenue);
                 },
 
-                // Thống kê lịch sử ca theo ngày chọn
                 get filteredShiftsHistory() {
-                    const start = new Date(this.startDate + 'T00:00:00').getTime();
-                    const end = new Date(this.endDate + 'T23:59:59').getTime();
                     return this.shiftsHistory.filter(s => {
-                        if (!s.endTime && !s.startTime) return false;
-                        const t = new Date(s.endTime || s.startTime).getTime();
-                        return t >= start && t <= end;
+                        const shiftDate = this.formatDateToLocalYMD(s.endTime || s.startTime);
+                        if (!shiftDate) return false;
+                        return shiftDate >= this.startDate && shiftDate <= this.endDate;
                     });
                 },
 
@@ -941,7 +1055,6 @@
                     return hours.filter(h => h.orderCount > 0);
                 },
 
-                // ================= CÀI ĐẶT THÔNG BÁO BOT TELEGRAM & ZALO =================
                 saveBotSettings() {
                     db.ref('botSettings').set(this.botSettings).then(() => {
                         alert('Đã lưu cấu hình Bot Telegram & Zalo thành công!');
@@ -949,43 +1062,44 @@
                 },
 
                 testTelegramBot() {
-                    if (!this.botSettings.telegramToken || !this.botSettings.telegramChatId) {
+                    const token = (this.botSettings.telegramToken || '').trim();
+                    const chatId = (this.botSettings.telegramChatId || '').trim();
+
+                    if (!token || !chatId) {
                         alert('Vui lòng điền Telegram Bot Token và Chat ID trước!');
                         return;
                     }
-                    const text = encodeURIComponent(`🔔 [BÁNH KẸP POS - TEST]\n✅ Bot Telegram kết nối thành công lúc ${new Date().toLocaleTimeString('vi-VN')}!\nDoanh thu hôm nay: ${this.reportStats.revenue.toLocaleString()}đ.`);
-                    const url = `https://api.telegram.org/bot${this.botSettings.telegramToken}/sendMessage?chat_id=${this.botSettings.telegramChatId}&text=${text}`;
 
-                    fetch(url)
-                        .then(res => res.json())
-                        .then(res => {
-                            if (res.ok) alert('Đã gửi tin nhắn test thành công! Hãy kiểm tra ứng dụng Telegram của bạn.');
-                            else alert('Gửi thất bại: ' + res.description);
-                        })
-                        .catch(err => alert('Không thể kết nối Telegram API: ' + err.message));
-                },
+                    db.ref('botSettings').update({
+                        telegramToken: token,
+                        telegramChatId: chatId
+                    });
 
-                testZaloWebhook() {
-                    if (!this.botSettings.zaloWebhookUrl) {
-                        alert('Vui lòng điền Zalo Webhook URL trước!');
-                        return;
-                    }
-                    const payload = {
-                        event: 'test_notification',
-                        message: `Bánh Kẹp POS test kết nối Zalo lúc ${new Date().toLocaleString('vi-VN')}`,
-                        revenue: this.reportStats.revenue
-                    };
+                    const messageText = `🔔 [BÁNH KẸP POS - TEST]\n✅ Bot Telegram kết nối thành công lúc ${new Date().toLocaleTimeString('vi-VN')}!\nDoanh thu hôm nay: ${this.reportStats.revenue.toLocaleString()}đ.`;
 
-                    fetch(this.botSettings.zaloWebhookUrl, {
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('text', messageText);
+                    formData.append('parse_mode', 'HTML');
+
+                    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: formData
                     })
-                    .then(() => alert('Đã gửi webhook thử nghiệm đến Zalo!'))
-                    .catch(err => alert('Lỗi gửi webhook Zalo: ' + err.message));
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ok) {
+                            alert('🎉 ĐÃ GỬI THÀNH CÔNG!\nHãy mở ứng dụng Telegram để kiểm tra tin nhắn.');
+                        } else {
+                            alert(`Lỗi từ Telegram: ${data.description}`);
+                        }
+                    })
+                    .catch(err => {
+                        alert(`❌ Vẫn bị lỗi "Failed to fetch"! Hãy bật 1.1.1.1 (WARP) rồi bấm thử lại.`);
+                    });
                 },
 
-                // ================= NHẬP KHO & CÔNG NỢ =================
+                // Nhập kho
                 openCreateImportModal() {
                     this.editingImportId = null;
                     this.originalImportItems = [];
@@ -1143,7 +1257,6 @@
                     this.showPayDebtModal = false;
                 },
 
-                // ================= QUẢN LÝ NHÂN VIÊN =================
                 openStaffModal() {
                     this.staffForm = { id: null, name: '', username: '', pin: '1234', role: 'Thu ngân' };
                     this.showStaffModal = true;
