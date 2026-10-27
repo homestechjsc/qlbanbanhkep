@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3978/3978759.png",
+      "src": "https://ibb.co/prrmz3WZ",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3978/3978759.png",
+      "src": "https://ibb.co/prrmz3WZ",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -26,13 +26,13 @@
       "name": "Bán Hàng Bánh Kẹp",
       "short_name": "Bán Hàng",
       "url": "index.html",
-      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/3978/3978759.png", "sizes": "96x96" }]
+      "icons": [{ "src": "https://ibb.co/prrmz3WZ", "sizes": "96x96" }]
     },
     {
       "name": "Quản Trị & Báo Cáo",
       "short_name": "Admin",
       "url": "admin.html",
-      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/3978/3978759.png", "sizes": "96x96" }]
+      "icons": [{ "src": "https://ibb.co/prrmz3WZ", "sizes": "96x96" }]
     }
   ]
 }
