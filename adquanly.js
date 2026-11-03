@@ -30,7 +30,7 @@ function cafeApp() {
             paperSize: '80mm',
             showQrPayment: true,
             bankCode: 'VPB',
-            bankAccount: '393931968688',
+            bankAccount: '39393196886',
             bankAccountName: 'LUONG THI THANH HOAI'
         },
 
