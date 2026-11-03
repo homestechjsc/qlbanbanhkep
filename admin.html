@@ -214,7 +214,7 @@
                 </div>
             </div>
 
-            <!-- 1.3 BÁO CÁO THEO CA LÀM VIỆC (ĐÃ BỔ SUNG NÚT XÓA DANH SÁCH & XÓA TỪNG DÒNG) -->
+            <!-- 1.3 BÁO CÁO THEO CA LÀM VIỆC (ĐÃ SỬA CHUẨN XÓA) -->
             <div x-show="reportSubTab === 'shifts'" class="space-y-2">
                 <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
                     <div class="flex justify-between items-center border-b pb-2">
@@ -229,9 +229,9 @@
                         <template x-if="filteredShiftsHistory.length > 0">
                             <button type="button" 
                                     @click="deleteAllFilteredShifts()" 
-                                    class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs transition active:scale-95" 
+                                    class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer" 
                                     title="Xóa tất cả các ca đang hiển thị theo ngày">
-                                <i class="fa-solid fa-trash-can text-[10px]"></i> Xóa hết theo khoảng ngày
+                                <i class="fa-solid fa-trash-can text-[10px] pointer-events-none"></i> Xóa hết theo khoảng ngày
                             </button>
                         </template>
                     </div>
@@ -254,10 +254,10 @@
                                         
                                         <!-- NÚT XÓA TỪNG CA BÁN -->
                                         <button type="button" 
-                                                @click="deleteSingleShift(sh.id, sh.shiftName, sh.cashier)" 
-                                                class="w-7 h-7 flex items-center justify-center text-rose-600 hover:text-white hover:bg-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs" 
+                                                @click.stop="deleteSingleShift(sh.id || sh.firebaseKey, sh.shiftName, sh.cashier)" 
+                                                class="w-8 h-8 flex items-center justify-center text-rose-600 hover:text-white hover:bg-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs cursor-pointer z-10" 
                                                 title="Xóa biên bản ca này">
-                                            <i class="fa-solid fa-trash text-[10px]"></i>
+                                            <i class="fa-solid fa-trash text-[11px] pointer-events-none"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -627,7 +627,7 @@
     <div x-show="showPayDebtModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4" style="display: none;">
         <div @click.outside="showPayDebtModal = false" class="bg-white w-full max-w-xs rounded-2xl p-4 shadow-2xl space-y-3">
             <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-black text-slate-800 text-sm">Thanh Toán Trả Nợ NCC</h3>
+                <h3 class="font-black text-slate-800 text-sm">Thanh Toán Trả NỢ NCC</h3>
                 <button @click="showPayDebtModal = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
@@ -863,29 +863,45 @@
                     });
                 },
 
-                // ================= LOGIC XÓA BÁO CÁO CA BÁN =================
+                // ================= LOGIC XÓA BÁO CÁO CA BÁN (ĐÃ SỬA CHUẨN XÁC) =================
                 // 1. Xóa 1 ca riêng lẻ
-                deleteSingleShift(shiftId, shiftName, cashier) {
-                    if (confirm(`Bạn có chắc muốn xóa vĩnh viễn biên bản kết ca "${shiftName}" của thu ngân "${cashier}"?`)) {
-                        db.ref('shiftsHistory/' + shiftId).remove()
-                            .then(() => alert(`Đã xóa ca "${shiftName}" thành công!`[span_2](start_span)[span_2](end_span)))
-                            .catch(err => alert('Lỗi: ' + err.message));
+                deleteSingleShift(shiftKey, shiftName, cashier) {
+                    if (!shiftKey) {
+                        alert('Lỗi: Không tìm thấy mã khóa của ca này!');
+                        return;
+                    }
+                    const name = shiftName || 'Ca làm việc';
+                    const staff = cashier || 'nhân viên';
+                    if (confirm(`Bạn có chắc muốn xóa vĩnh viễn biên bản kết ca "${name}" của "${staff}"?`)) {
+                        db.ref('shiftsHistory/' + shiftKey).remove()
+                            .then(() => {
+                                alert(`Đã xóa ca "${name}" thành công!`);
+                            })
+                            .catch(err => {
+                                alert('Lỗi xóa ca: ' + err.message);
+                            });
                     }
                 },
 
                 // 2. Xóa hàng loạt ca theo khoảng ngày đang lọc
-                deleteAllFilteredShifts() {
+                async deleteAllFilteredShifts() {
                     const shiftsToDelete = this.filteredShiftsHistory;
-                    if (shiftsToDelete.length === 0) {
+                    if (!shiftsToDelete || shiftsToDelete.length === 0) {
                         alert('Không có ca bán nào trong khoảng ngày này để xóa!');
                         return;
                     }
 
                     if (confirm(`⚠️ CẢNH BÁO QUẢN LÝ:\nBạn có chắc chắn muốn xóa TOÀN BỘ ${shiftsToDelete.length} ca làm việc từ ngày ${this.startDate} đến ngày ${this.endDate}?`)) {
-                        shiftsToDelete.forEach(sh => {
-                            db.ref('shiftsHistory/' + sh.id).remove();
-                        });
-                        alert(`Đã xóa sạch ${shiftsToDelete.length} ca bán theo khoảng ngày lọc!`[span_3](start_span)[span_3](end_span));
+                        try {
+                            const deletePromises = shiftsToDelete.map(sh => {
+                                const key = sh.firebaseKey || sh.id;
+                                return db.ref('shiftsHistory/' + key).remove();
+                            });
+                            await Promise.all(deletePromises);
+                            alert(`Đã xóa sạch ${shiftsToDelete.length} ca bán theo khoảng ngày lọc!`);
+                        } catch (err) {
+                            alert('Lỗi xóa hàng loạt: ' + err.message);
+                        }
                     }
                 },
 
@@ -936,10 +952,14 @@
                         this.importHistory = d ? Object.keys(d).map(k => ({ id: k, ...d[k] })).reverse() : [];
                     });
 
-                    // 5. Kết ca (Lấy đúng id của node Firebase để hỗ trợ xóa)
+                    // 5. Kết ca (ĐẢM BẢO id & firebaseKey LUÔN LÀ KEY CHUẨN CỦA FIREBASE)
                     db.ref('shiftsHistory').on('value', snap => {
                         const d = snap.val();
-                        this.shiftsHistory = d ? Object.keys(d).map(k => ({ id: k, ...d[k] })).reverse() : [];
+                        this.shiftsHistory = d ? Object.keys(d).map(k => ({
+                            ...d[k],
+                            id: k,
+                            firebaseKey: k
+                        })).reverse() : [];
                     });
 
                     // 6. Sổ quỹ thu chi
