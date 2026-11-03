@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Trang Quản Trị & Kho Hàng - HomesTech POS</title>
+    <!-- Cấu hình PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0072bc">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bánh Kẹp POS">
-    <link rel="apple-touch-icon" href="https://cdn.upanhlaylink.com/i/JaZi0Dc4.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
 
+    <!-- Đăng ký Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -20,10 +22,14 @@
             });
         }
     </script>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
@@ -65,8 +71,10 @@
     <!-- 2. NỘI DUNG CHÍNH -->
     <main style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);" class="flex-1 overflow-y-auto mobile-scroll p-3 pb-24">
 
-        <!-- ================= TAB 1: BÁO CÁO DOANH THU ================= -->
+        <!-- ================= TAB 1: BÁO CÁO DOANH THU, NHÂN VIÊN & CA ================= -->
         <div x-show="currentTab === 'reports'" class="space-y-3">
+            
+            <!-- Menu chọn nhánh con Báo Cáo -->
             <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold gap-1">
                 <button @click="reportSubTab = 'overview'" :class="reportSubTab === 'overview' ? 'bg-white text-[#0072bc] shadow-sm' : 'text-slate-600'" class="flex-1 py-1.5 rounded-lg transition">
                     Tổng Quan
@@ -79,6 +87,7 @@
                 </button>
             </div>
 
+            <!-- Bộ lọc thời gian dùng chung -->
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2">
                 <div class="flex justify-between items-center">
                     <span class="text-xs font-black text-slate-700 uppercase">Khoảng Thời Gian:</span>
@@ -205,26 +214,52 @@
                 </div>
             </div>
 
-            <!-- 1.3 BÁO CÁO THEO CA LÀM VIỆC -->
+            <!-- 1.3 BÁO CÁO THEO CA LÀM VIỆC (ĐÃ BỔ SUNG NÚT XÓA DANH SÁCH & XÓA TỪNG DÒNG) -->
             <div x-show="reportSubTab === 'shifts'" class="space-y-2">
                 <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="font-black text-xs text-slate-700 uppercase border-b pb-1.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-business-time text-amber-500"></i> Báo Cáo Kết Ca & Bàn Giao Két
-                    </h3>
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <div>
+                            <h3 class="font-black text-xs text-slate-700 uppercase flex items-center gap-1.5">
+                                <i class="fa-solid fa-business-time text-amber-500"></i> Báo Cáo Kết Ca & Bàn Giao Két
+                            </h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5" x-text="'Đang lọc: ' + filteredShiftsHistory.length + ' ca'"></p>
+                        </div>
+
+                        <!-- NÚT XÓA HẾT CA THEO KHOẢNG NGÀY ĐANG CHỌN -->
+                        <template x-if="filteredShiftsHistory.length > 0">
+                            <button type="button" 
+                                    @click="deleteAllFilteredShifts()" 
+                                    class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-[11px] font-bold flex items-center gap-1 shadow-xs transition active:scale-95" 
+                                    title="Xóa tất cả các ca đang hiển thị theo ngày">
+                                <i class="fa-solid fa-trash-can text-[10px]"></i> Xóa hết theo khoảng ngày
+                            </button>
+                        </template>
+                    </div>
+
                     <div class="space-y-2 mt-2">
                         <template x-if="filteredShiftsHistory.length === 0">
-                            <p class="text-xs text-slate-400 text-center py-4 italic">Chưa có biên bản kết ca nào trong khoảng ngày này.</p>
+                            <p class="text-xs text-slate-400 text-center py-6 italic">Chưa có biên bản kết ca nào trong khoảng ngày này.</p>
                         </template>
                         <template x-for="sh in filteredShiftsHistory" :key="sh.id">
-                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs relative">
                                 <div class="flex justify-between items-center">
                                     <div>
                                         <strong class="font-black text-sm text-slate-800" x-text="sh.shiftName"></strong>
                                         <span class="text-[10px] text-slate-500 font-semibold" x-text="' (' + sh.cashier + ')'"></span>
                                     </div>
-                                    <span class="text-[10px] px-2 py-0.5 rounded font-black uppercase"
-                                          :class="Number(sh.difference || 0) < 0 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'"
-                                          x-text="'Lệch: ' + (Number(sh.difference || 0) >= 0 ? '+' : '') + Number(sh.difference || 0).toLocaleString() + 'đ'"></span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[10px] px-2 py-0.5 rounded font-black uppercase"
+                                              :class="Number(sh.difference || 0) < 0 ? 'bg-rose-100 text-rose-700 border border-rose-300' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'"
+                                              x-text="'Lệch: ' + (Number(sh.difference || 0) >= 0 ? '+' : '') + Number(sh.difference || 0).toLocaleString() + 'đ'"></span>
+                                        
+                                        <!-- NÚT XÓA TỪNG CA BÁN -->
+                                        <button type="button" 
+                                                @click="deleteSingleShift(sh.id, sh.shiftName, sh.cashier)" 
+                                                class="w-7 h-7 flex items-center justify-center text-rose-600 hover:text-white hover:bg-rose-600 bg-white border border-rose-200 rounded-lg active:scale-90 transition shadow-xs" 
+                                                title="Xóa biên bản ca này">
+                                            <i class="fa-solid fa-trash text-[10px]"></i>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-1 text-[11px] text-slate-500 border-t border-slate-200/60 pt-1">
@@ -456,7 +491,7 @@
                 </button>
             </div>
 
-            <!-- Cấu hình Zalo Bot Platform (Đọc trực tiếp getUpdates tự động bắt Chat ID) -->
+            <!-- Cấu hình Zalo Bot Platform -->
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
                 <h3 class="font-black text-xs text-blue-700 uppercase flex items-center gap-1.5 border-b pb-1.5">
                     <i class="fa-solid fa-message text-base"></i> Cấu hình Zalo Bot Cá Nhân
@@ -467,7 +502,7 @@
                     <input type="text" x-model="botSettings.zaloBotToken" placeholder="Dán Bot Token vào đây..." class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono">
                 </div>
 
-                <!-- KHỐI QUÉT CHAT ID TỰ ĐỘNG QUA GETUPDATES -->
+                <!-- KHỐI QUÉT CHAT ID TỰ ĐỘNG -->
                 <div class="bg-blue-50 border border-blue-200 rounded-2xl p-3 space-y-2">
                     <div class="flex justify-between items-center">
                         <strong class="text-xs text-blue-900 font-black">LẤY CHAT ID TỰ ĐỘNG TỪ ZALO</strong>
@@ -499,7 +534,7 @@
                 </button>
             </div>
 
-            <!-- Nút lưu toàn bộ cấu hình Bot -->
+            <!-- Nút lưu cấu hình Bot -->
             <button type="button" @click="saveBotSettings()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-floppy-disk"></i> Lưu Cài Đặt Thông Báo Bot
             </button>
@@ -730,7 +765,7 @@
                 botSettings: {
                     telegramToken: '',
                     telegramChatId: '',
-                    zaloBotToken: '1152271286228236477:EICdxWEANyapBxWZNEiAVaLMbmvYiYQvDGFXUNVsJfsvb1rlQBREuXAbjxXfzvEs',
+                    zaloBotToken: '1152271286228236477:EICdxWEANyapBxWZNeiAVaLMbmvYiYQvDGFXUNVsJfsvblrlQBREuXAbjxXfzvEs',
                     zaloChatId: '',
                     notifyOnOrder: true,
                     notifyOnShiftClose: true
@@ -757,7 +792,6 @@
                             .then(res => res.json())
                             .then(data => {
                                 if (data && data.result && data.result.length > 0) {
-                                    // Lấy tin nhắn mới nhất
                                     const latestUpdate = data.result[data.result.length - 1];
                                     const chatId = latestUpdate.message?.chat?.id || latestUpdate.message?.from?.id;
 
@@ -766,7 +800,6 @@
                                         clearInterval(this.scanTimer);
                                         this.isScanning = false;
 
-                                        // Lưu ngay vào Firebase
                                         db.ref('botSettings').update({
                                             zaloBotToken: token,
                                             zaloChatId: String(chatId)
@@ -780,10 +813,8 @@
                             .catch(err => console.log('Đang quét getUpdates...', err));
                     };
 
-                    // Quét ngay lần đầu
                     scanOnce();
 
-                    // Quét lặp lại mỗi 2 giây
                     clearInterval(this.scanTimer);
                     this.scanTimer = setInterval(() => {
                         this.pairCountDown -= 2;
@@ -799,13 +830,13 @@
                     }, 2000);
                 },
 
-                // GỬI TIN NHẮN TRỰC TIẾP QUA API CHÍNH THỨC CỦA ZALO BOT
+                // GỬI TIN NHẮN QUA API ZALO BOT
                 testZaloBot() {
                     const token = (this.botSettings.zaloBotToken || '').trim();
                     const chatId = (this.botSettings.zaloChatId || '').trim();
 
                     if (!token || !chatId) {
-                        alert('Chưa có Bot Token hoặc Chat ID! Hãy bấm nút lấy Chat ID phía trên trước.');
+                        alert('Chưa có Bot Token hoặc Chat ID! Hãy kiểm tra lại.');
                         return;
                     }
 
@@ -815,20 +846,12 @@
                     });
 
                     const msg = `🔔 [BÁNH CÁ POS - TEST]\n✅ Bot Zalo kết nối thành công lúc ${new Date().toLocaleTimeString('vi-VN')}!\nDoanh thu hôm nay: ${this.reportStats.revenue.toLocaleString()}đ.`;
-
-                    // Endpoint chính thức của Zalo Bot Platform
                     const targetUrl = `https://bot-api.zaloplatforms.com/bot${token}/sendMessage`;
-
-                    const payload = {
-                        chat_id: chatId,
-                        text: msg
-                    };
+                    const payload = { chat_id: chatId, text: msg };
 
                     fetch(targetUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
                         mode: 'no-cors'
                     })
@@ -838,6 +861,32 @@
                     .catch(err => {
                         alert(`❌ Gửi thất bại: ${err.message}`);
                     });
+                },
+
+                // ================= LOGIC XÓA BÁO CÁO CA BÁN =================
+                // 1. Xóa 1 ca riêng lẻ
+                deleteSingleShift(shiftId, shiftName, cashier) {
+                    if (confirm(`Bạn có chắc muốn xóa vĩnh viễn biên bản kết ca "${shiftName}" của thu ngân "${cashier}"?`)) {
+                        db.ref('shiftsHistory/' + shiftId).remove()
+                            .then(() => alert(`Đã xóa ca "${shiftName}" thành công!`[span_2](start_span)[span_2](end_span)))
+                            .catch(err => alert('Lỗi: ' + err.message));
+                    }
+                },
+
+                // 2. Xóa hàng loạt ca theo khoảng ngày đang lọc
+                deleteAllFilteredShifts() {
+                    const shiftsToDelete = this.filteredShiftsHistory;
+                    if (shiftsToDelete.length === 0) {
+                        alert('Không có ca bán nào trong khoảng ngày này để xóa!');
+                        return;
+                    }
+
+                    if (confirm(`⚠️ CẢNH BÁO QUẢN LÝ:\nBạn có chắc chắn muốn xóa TOÀN BỘ ${shiftsToDelete.length} ca làm việc từ ngày ${this.startDate} đến ngày ${this.endDate}?`)) {
+                        shiftsToDelete.forEach(sh => {
+                            db.ref('shiftsHistory/' + sh.id).remove();
+                        });
+                        alert(`Đã xóa sạch ${shiftsToDelete.length} ca bán theo khoảng ngày lọc!`[span_3](start_span)[span_3](end_span));
+                    }
                 },
 
                 // Quản lý Nhân viên
@@ -887,7 +936,7 @@
                         this.importHistory = d ? Object.keys(d).map(k => ({ id: k, ...d[k] })).reverse() : [];
                     });
 
-                    // 5. Kết ca
+                    // 5. Kết ca (Lấy đúng id của node Firebase để hỗ trợ xóa)
                     db.ref('shiftsHistory').on('value', snap => {
                         const d = snap.val();
                         this.shiftsHistory = d ? Object.keys(d).map(k => ({ id: k, ...d[k] })).reverse() : [];
